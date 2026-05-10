@@ -1115,10 +1115,11 @@ public void EliminaSconto(int id)
 
 public void MigraColonnaRegistrazioneBloccata()
 {
-    string query = @"ALTER TABLE impostazioni
-                     ADD COLUMN IF NOT EXISTS registrazioneBloccata TINYINT(1) NOT NULL DEFAULT 0";
-    MySqlCommand cmd = new MySqlCommand(query, con);
-    cmd.ExecuteNonQuery();
+    try
+    {
+        new MySqlCommand("ALTER TABLE impostazioni ADD COLUMN registrazioneBloccata TINYINT(1) NOT NULL DEFAULT 0", con).ExecuteNonQuery();
+    }
+    catch { /* colonna già presente */ }
 }
 
 public bool RecuperaRegistrazioneBloccata()
