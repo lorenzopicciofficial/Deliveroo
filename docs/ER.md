@@ -106,6 +106,7 @@ erDiagram
         TIME orarioChiusura
         VARCHAR giorniAperti
         VARCHAR messaggioChiusura
+        TINYINT registrazioneBloccata
     }
 
     utente ||--o{ ordine : "effettua"

@@ -185,7 +185,7 @@ DeliverooApp/
 | idArticolo | INT, FK → articolo.id | ON DELETE CASCADE |
 | — | UNIQUE(idUtente, idArticolo) | Un utente può salvare ogni articolo una sola volta |
 
-### 4.11 `impostazioni` (orari)
+### 4.11 `impostazioni` (orari e sicurezza)
 | Campo | Tipo | Note |
 |---|---|---|
 | id | INT, PK | |
@@ -193,6 +193,7 @@ DeliverooApp/
 | orarioChiusura | TIME | |
 | giorniAperti | VARCHAR | Numeri separati da virgola (1-7) |
 | messaggioChiusura | VARCHAR | Messaggio mostrato quando chiuso |
+| registrazioneBloccata | TINYINT(1) | `0` aperto, `1` quarantena attiva |
 
 ### Diagramma relazioni
 ```
@@ -311,13 +312,20 @@ articolo (M) ──── (N) articolo  [via associazioni]
 - Eliminazione sconti scaduti
 - Applicazione automatica sconti nel carrello e checkout
 
-### 6.6 Impostazioni orari
+### 6.6 Security — Quarantena
+- Pagina **Security** accessibile solo all'admin (🔒 nel menu Admin)
+- **Toggle arancione** che attiva/disattiva la modalità quarantena
+- Quando attiva: la pagina `/Home/Registrazione` è completamente irraggiungibile (redirect a Index anche via URL diretto)
+- Stato persistito nella colonna `registrazioneBloccata` di `impostazioni`
+- Banner di stato (verde = aperto, arancione = bloccato) nella pagina Security
+
+### 6.7 Impostazioni orari
 - Configurazione orario apertura e chiusura
 - Selezione giorni operativi della settimana
 - Messaggio personalizzato di chiusura
 - Banner dinamico di disponibilita'
 
-### 6.7 Dashboard Analytics (Insights)
+### 6.8 Dashboard Analytics (Insights)
 - **Incasso totale**
 - **Incasso per categoria**
 - **Ordini per giorno** (timeline)
@@ -325,7 +333,7 @@ articolo (M) ──── (N) articolo  [via associazioni]
 - **Top 5 prodotti** piu' ordinati
 - **Prodotto piu' ordinato**
 
-### 6.8 Export dati
+### 6.9 Export dati
 - Articoli → CSV
 - Ordini → CSV
 - Utenti → CSV
@@ -436,6 +444,12 @@ articolo (M) ──── (N) articolo  [via associazioni]
 | POST | `/Home/Impostazioni` | Aggiorna orari |
 | GET | `/Home/Insights` | Dashboard analytics |
 
+### Admin — Security
+| Metodo | Route | Descrizione |
+|---|---|---|
+| GET | `/Home/Security` | Pagina sicurezza con toggle quarantena |
+| POST | `/Home/ToggleQuarantena` | Attiva/disattiva blocco registrazioni |
+
 ### Errori
 | Metodo | Route | Descrizione |
 |---|---|---|
@@ -485,11 +499,11 @@ articolo (M) ──── (N) articolo  [via associazioni]
 - Font: Syne (titoli/prezzi), DM Sans (corpo)
 - Stili custom completi in `site.css` (no Bootstrap per il design visivo)
 
-### Pagine (19 viste)
+### Pagine (20 viste)
 1. `Index` — Catalogo prodotti con filtro categoria, ricerca, cuoricini preferiti
 2. `DettaglioArticolo` — Dettaglio prodotto, recensioni, prodotti correlati
 3. `Login` — Form login con link reset password
-4. `Registrazione` — Form registrazione con scelta domanda di sicurezza
+4. `Registrazione` — Form registrazione con scelta domanda di sicurezza (irraggiungibile in quarantena)
 5. `Profilo` — Gestione profilo utente
 6. `MieiOrdini` — Storico ordini con filtro stato
 7. `DettaglioOrdine` — Dettaglio ordine, note, tracking stato
@@ -503,8 +517,9 @@ articolo (M) ──── (N) articolo  [via associazioni]
 15. `ElencoSconti` — Admin: gestione sconti
 16. `Orari` — Admin: impostazioni orari
 17. `Insights` — Admin: dashboard analytics
-18. `Privacy` — Privacy policy
-19. `Error404` — Pagina errore personalizzata
+18. `Security` — Admin: toggle quarantena registrazioni
+19. `Privacy` — Privacy policy
+20. `Error404` — Pagina errore personalizzata
 
 ---
 

@@ -48,7 +48,7 @@ DeliverooApp/
 │   │   └── GestioneCarrello.cs    # Session-based cart (anonymous users)
 │   └── ErrorViewModel.cs
 ├── Views/
-│   ├── Home/                      # 19 Razor views (customer + admin)
+│   ├── Home/                      # 20 Razor views (customer + admin)
 │   └── Shared/
 │       ├── _Layout.cshtml         # Customer layout
 │       ├── _LayoutAdmin.cshtml    # Admin layout (sidebar)
@@ -122,7 +122,6 @@ Categories of methods:
 |---|---|
 | Users | `RecuperaUtenteConNome`, `InserisciUtente`, `AggiornaRuoloUtente` |
 | Password reset | `RecuperaDomandaSicurezza`, `VerificaRispostaSicurezza`, `AggiornaPassword` |
-| Startup migrations | `MigraColonnaNote`, `MigraUtentiSenzaRisposta` |
 | Products | `RecuperaTuttiGliArticoli`, `ModificaArticolo`, `EliminaArticolo` |
 | Orders | `InserisciOrdineERestituisciId`, `AggiornaStatoOrdine` |
 | Cart (DB) | `AggiungiAlCarrelloDB`, `RimuoviUnoCarrelloDB`, `SvuotaCarrelloDB` |
@@ -131,7 +130,8 @@ Categories of methods:
 | Discounts | `RecuperaScontoAttivoByArticolo`, `RecuperaScontiAttiviPerArticoli` |
 | Reviews | `SalvaRecensione`, `MediaVotiArticolo`, `HaOrdinatoArticolo` |
 | Analytics | `IncassoTotale`, `IncassoPerCategoria`, `OrdiniPerGiorno`, `Top5Articoli` |
-| Settings | `RecuperaOrari`, `AggiornaOrari` |
+| Settings | `RecuperaOrari`, `AggiornaOrari`, `RecuperaRegistrazioneBloccata`, `ImpostaRegistrazioneBloccata` |
+| Startup migrations | `MigraColonnaNote`, `MigraColonnaRegistrazioneBloccata`, `MigraUtentiSenzaRisposta` |
 
 ---
 
@@ -178,7 +178,9 @@ CSS isolation bundles (`DeliverooApp.styles.css`) are auto-generated per `.cshtm
 
 ## 10. Configuration
 
-`appsettings.json` (excluded from git) holds:
+`appsettings.json` (committed, no credentials) holds non-sensitive defaults. `appsettings.Development.json` (excluded from git) holds local credentials. In production (Railway), credentials are injected as environment variables (`ConnectionStrings__Default`, `AdminCredentials__Username`, `AdminCredentials__Password`) which ASP.NET Core resolves automatically over the base config.
+
+Example base config:
 
 ```json
 {
