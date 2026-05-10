@@ -1,0 +1,74 @@
+@model List<DeliverooApp.Models.Associazione>
+@{
+    ViewData["Title"] = "Associazioni";
+    Layout = "_Layout";
+    var articoli = ViewBag.Articoli as List<DeliverooApp.Models.Articolo>;
+}
+
+<div class="admin-articoli-wrapper">
+
+    <div class="admin-header">
+        <div style="display:flex; align-items:center; gap:1rem;">
+            <h1>Associazioni articoli</h1>
+            <span class="badge-admin">ADMIN</span>
+        </div>
+        <a href="/Home/ExportAssociazioniCsv" class="btn-export">Esporta CSV</a>
+    </div>
+
+    <div class="admin-table-wrap">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Articolo X</th>
+                    <th>Articolo Y</th>
+                    <th>Ordini in comune</th>
+                    <th>Azioni</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var a in Model)
+                {
+                    var nomeX = articoli?.FirstOrDefault(art => art.Id == a.IdArticoloX)?.Nome ?? a.IdArticoloX.ToString();
+                    var nomeY = articoli?.FirstOrDefault(art => art.Id == a.IdArticoloY)?.Nome ?? a.IdArticoloY.ToString();
+                    <tr>
+                        <td><strong>@nomeX</strong></td>
+                        <td><strong>@nomeY</strong></td>
+                        <td>
+                            <input type="number" class="assoc-input" min="0"
+                                   value="@a.NumOrdini"
+                                   onchange="modificaAssociazione(@a.IdArticoloX, @a.IdArticoloY, this.value)"/>
+                        </td>
+                        <td>
+                            <form method="post" asp-action="EliminaAssociazione"
+                                  onsubmit="return confirm('Eliminare associazione @nomeX → @nomeY?')">
+                                <input type="hidden" name="idX" value="@a.IdArticoloX"/>
+                                <input type="hidden" name="idY" value="@a.IdArticoloY"/>
+                                <button type="submit" class="btn-admin-delete">Elimina</button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    function modificaAssociazione(idX, idY, numOrdini) {
+        fetch('/Home/ModificaAssociazione', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `idX=${idX}&idY=${idY}&numOrdini=${numOrdini}`
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success)
+                mostraToast('Associazione aggiornata');
+            else
+                mostraToast('Errore aggiornamento');
+        })
+        .catch(() => mostraToast('Errore di connessione'));
+    }
+</script>
+}

@@ -1,0 +1,192 @@
+﻿@model List<DeliverooApp.Models.Articolo>
+@{
+    bool isAperto = ViewBag.IsAperto ?? true;
+    string orarioApertura = ViewBag.OrarioApertura ?? "07:00";
+    string orarioChiusura = ViewBag.OrarioChiusura ?? "22:00";
+    string messaggioChiusura = ViewBag.MessaggioChiusura ?? "Siamo chiusi.";
+    var quantita = ViewBag.QuantitaCarrello as Dictionary<int, int> ?? new Dictionary<int, int>();
+    var articoliCarrello = ViewBag.ArticoliCarrello as List<DeliverooApp.Models.Articolo>
+    ?? new List<DeliverooApp.Models.Articolo>();
+    double totaleCarrello = ViewBag.TotaleCarrello ?? 0.0;
+    bool isLoggato = ViewBag.IsLoggato ?? false;
+    var mediaVoti = ViewBag.MediaVoti as Dictionary<int, double> ?? new Dictionary<int, double>();
+    var scontiAttivi = ViewBag.ScontiAttivi as Dictionary<int, DeliverooApp.Models.Sconto>
+        ?? new Dictionary<int, DeliverooApp.Models.Sconto>();
+    var preferiti = ViewBag.Preferiti as HashSet<int> ?? new HashSet<int>();
+
+    ViewData["Title"] = "Home Page";
+    Layout = "_Layout";
+    var categorie = Model?.Select(a => a.Categoria).Distinct().OrderBy(c => c).ToList() ?? new List<string>();
+}
+
+<section class="hero">
+    <div class="hero-content">
+        <p class="hero-eyebrow">Benvenuto al</p>
+        <h1 class="hero-title">Caffè Ritmo</h1>
+        <p class="hero-sub">Scegli dal nostro menu e l'ordine arriverà direttamente alla destinazione.</p>
+
+        <div class="search-bar">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+            </svg>
+            <input type="text" id="searchInput" placeholder="Cerca un prodotto..."/>
+        </div>
+    </div>
+</section>
+
+<!-- BANNER ORARI -->
+@if (!isAperto)
+{
+    <div class="banner-chiuso">
+        <span class="banner-chiuso-icon">🕐</span>
+        <div>
+            <p class="banner-chiuso-titolo">@messaggioChiusura</p>
+            <p class="banner-chiuso-orario">Orario di apertura: @orarioApertura — @orarioChiusura</p>
+        </div>
+    </div>
+}
+else
+{
+    <div class="banner-aperto">
+        <span>🟢</span>
+        <p>Siamo aperti! Ordina ora — consegna in 5-30 minuti</p>
+        <span class="banner-orario-testo">Orario: @orarioApertura — @orarioChiusura</span>
+    </div>
+}
+
+<section class="catalog-section">
+    <div class="category-tabs">
+        <button class="tab active" data-cat="Tutti">Tutti</button>
+        @foreach (var cat in categorie)
+        {
+            <button class="tab" data-cat="@cat">@cat</button>
+        }
+    </div>
+
+    <div class="products-grid" id="productsGrid">
+        @if (Model != null && Model.Count > 0)
+        {
+            @foreach (var a in Model)
+            {
+                double media = mediaVoti.ContainsKey(a.Id) ? mediaVoti[a.Id] : 0;
+                var sconto = scontiAttivi.ContainsKey(a.Id) ? scontiAttivi[a.Id] : null;
+                double prezzoFinale = sconto != null
+                    ? a.PrezzoListino * (1 - sconto.Percentuale / 100.0)
+                    : a.PrezzoListino;
+
+                <div class="product-card" data-cat="@a.Categoria" data-name="@a.Nome.ToLower()">
+                    <div class="product-img-wrap">
+                        <a href="/Home/DettaglioArticolo/@a.Id" class="product-img-link">
+                            @if (!string.IsNullOrEmpty(a.FotoUrl))
+                            {
+                                <img src="@a.FotoUrl" alt="@a.Nome"/>
+                            }
+                            else
+                            {
+                                <div class="product-img-placeholder">~</div>
+                            }
+                        </a>
+                        @if (isLoggato)
+                        {
+                            bool isPref = preferiti.Contains(a.Id);
+                            <button class="btn-preferito @(isPref ? "attivo" : "")"
+                                    onclick="togglePreferito(event, @a.Id, this)"
+                                    title="@(isPref ? "Rimuovi dai preferiti" : "Aggiungi ai preferiti")">
+                                ♥
+                            </button>
+                        }
+                    </div>
+                    <div class="product-info">
+                        <span class="product-cat-badge">@a.Categoria</span>
+                        <a href="/Home/DettaglioArticolo/@a.Id" class="product-name">@a.Nome</a>
+                        @if (media > 0)
+                        {
+                            <div class="product-stars">
+                                @for (int i = 1; i <= 5; i++)
+                                {
+                                    <span class="product-star @(i <= Math.Round(media) ? "product-star-piena" : "")">★</span>
+                                }
+                                <span class="product-star-media">@media.ToString("0.0")</span>
+                            </div>
+                        }
+                        <div class="product-footer">
+                            @if (sconto != null)
+                            {
+                                <div class="product-price-wrap">
+                                    <span class="product-price product-price-scontato">€ @prezzoFinale.ToString("0.00")</span>
+                                    <div class="product-price-sub">
+                                        <span class="product-price-originale">€ @a.PrezzoListino.ToString("0.00")</span>
+                                        <span class="sconto-badge-card">-@sconto.Percentuale%</span>
+                                    </div>
+                                </div>
+                            }
+                            else
+                            {
+                                <span class="product-price">€ @a.PrezzoListino.ToString("0.00")</span>
+                            }
+                            <button class="btn-add" onclick="aggiungiEApri(@a.Id)">+ Aggiungi</button>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+        else
+        {
+            <p class="empty-msg">Nessun articolo disponibile.</p>
+        }
+    </div>
+</section>
+
+@section Scripts {
+    <script>
+        function aggiungiEApri(id) {
+            fetch('/Home/MettiNelCarrello/' + id)
+                .then(() => {
+                    fetch('/Home/CarrelloJson')
+                        .then(r => r.json())
+                        .then(data => {
+                            document.getElementById('cartCountBadge').textContent = data.numeroArticoli;
+                            mostraToast('Articolo aggiunto al carrello');
+                        });
+                });
+        }
+
+        function togglePreferito(e, id, btn) {
+            e.preventDefault();
+            e.stopPropagation();
+            fetch('/Home/TogglePreferito?idArticolo=' + id, { method: 'POST' })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        btn.classList.toggle('attivo', data.preferito);
+                        btn.title = data.preferito ? 'Rimuovi dai preferiti' : 'Aggiungi ai preferiti';
+                    }
+                });
+        }
+
+    const tabs = document.querySelectorAll('.tab');
+    const cards = document.querySelectorAll('.product-card');
+    const searchInput = document.getElementById('searchInput');
+
+    function filtra() {
+        const catAttiva = document.querySelector('.tab.active')?.dataset.cat || 'Tutti';
+        const testo = searchInput.value.toLowerCase().trim();
+
+        cards.forEach(card => {
+            const matchCat = catAttiva === 'Tutti' || card.dataset.cat === catAttiva;
+            const matchSearch = card.dataset.name.includes(testo);
+            card.style.display = matchCat && matchSearch ? 'flex' : 'none';
+        });
+    }
+
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            tabs.forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            filtra();
+        });
+    });
+
+    searchInput.addEventListener('input', filtra);
+    </script>
+}

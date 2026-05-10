@@ -1,0 +1,178 @@
+@using DeliverooApp.Models
+@model List<Utente>
+@{
+    ViewData["Title"] = "Gestione Utenti";
+    Layout = "_Layout";
+}
+
+<div class="admin-articoli-wrapper">
+
+    <div class="admin-header">
+        <div style="display:flex; align-items:center; gap:1rem;">
+            <h1>Gestione Utenti</h1>
+            <span class="badge-admin">ADMIN</span>
+        </div>
+        <a href="/Home/ExportUtentiCsv" class="btn-export">Esporta CSV</a>
+    </div>
+
+    <div class="admin-search-bar">
+        <input type="text" id="searchUtenti" placeholder="Cerca..." oninput="filtraUtenti()"/>
+    </div>
+
+    <div class="admin-table-wrap">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th id="th-id" class="th-sortable" onclick="sortById()"># ↕</th>
+                    <th>Username</th>
+                    <th>Nome</th>
+                    <th>Cognome</th>
+                    <th>Email</th>
+                    <th>Ruolo</th>
+                    <th>Registrato il</th>
+                    <th>Azioni</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var u in Model)
+                {
+                    <tr class="utente-row" data-id="@u.Id" data-search="@u.UserName.ToLower() @u.Nome.ToLower() @u.Cognome.ToLower() @u.Email.ToLower()">
+                        <td class="td-id">#@u.Id</td>
+                        <td><strong>@u.UserName</strong></td>
+                        <td>@u.Nome</td>
+                        <td>@u.Cognome</td>
+                        <td>@u.Email</td>
+                        <td>
+                            <select class="stato-select stato-@u.Ruolo.ToLower()"
+                                    onchange="aggiornaRuolo(@u.Id, this)">
+                                <option value="user" selected="@(u.Ruolo.ToLower() == "user" ? "selected" : null)">User</option>
+                                <option value="admin" selected="@(u.Ruolo.ToLower() == "admin" ? "selected" : null)">Admin</option>
+                            </select>
+                        </td>
+                        <td class="td-muted">@u.DataCreazione.ToString("dd MMM yyyy")</td>
+                        <td class="admin-actions">
+                            <button class="btn-admin-edit"
+                                    data-id="@u.Id"
+                                    data-username="@u.UserName"
+                                    data-nome="@u.Nome"
+                                    data-cognome="@u.Cognome"
+                                    data-email="@u.Email"
+                                    data-ruolo="@u.Ruolo"
+                                    onclick="apriModificaUtente(this)">
+                                Modifica
+                            </button>
+                            <form method="post" asp-action="EliminaUtente" style="display:inline"
+                                  data-username="@u.UserName"
+                                  onsubmit="return confirm('Eliminare utente ' + this.dataset.username + '?')">
+                                <input type="hidden" name="id" value="@u.Id"/>
+                                <button type="submit" class="btn-admin-delete">Elimina</button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <!-- MODAL MODIFICA -->
+    <div class="admin-overlay" id="adminOverlayUtente" onclick="chiudiModificaUtente()"></div>
+    <div class="admin-modal" id="adminModalUtente">
+        <h3>Modifica utente</h3>
+        <form method="post" asp-action="ModificaUtente">
+            <input type="hidden" name="Id" id="editUtenteId"/>
+            <input type="hidden" name="UserName" id="editUtenteUsername"/>
+            <input type="hidden" name="DataCreazione" value="@DateTime.Now"/>
+            <div class="admin-form-grid">
+                <div class="form-group">
+                    <label>Nome</label>
+                    <input type="text" name="Nome" id="editUtentNome" required/>
+                </div>
+                <div class="form-group">
+                    <label>Cognome</label>
+                    <input type="text" name="Cognome" id="editUtenteCognome" required/>
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" name="Email" id="editUtenteEmail" required/>
+                </div>
+                <div class="form-group">
+                    <label>Nuova password</label>
+                    <input type="password" name="Password" id="editUtentePassword" placeholder="••••••••"/>
+                </div>
+                <div class="form-group full">
+                    <label>Ruolo</label>
+                    <select name="Ruolo" id="editUtenteRuolo">
+                        <option value="user">user</option>
+                        <option value="admin">admin</option>
+                    </select>
+                </div>
+            </div>
+            <div class="admin-form-actions">
+                <button type="submit" class="btn-admin-save">Salva modifiche</button>
+                <button type="button" class="btn-admin-cancel" onclick="chiudiModificaUtente()">Annulla</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    let sortAsc = true;
+    function sortById() {
+        const tbody = document.querySelector('table tbody');
+        const thId = document.getElementById('th-id');
+        const rows = Array.from(tbody.querySelectorAll('tr[data-id]'));
+        rows.sort((a, b) => {
+            const diff = parseInt(a.dataset.id) - parseInt(b.dataset.id);
+            return sortAsc ? diff : -diff;
+        });
+        rows.forEach(row => tbody.appendChild(row));
+        sortAsc = !sortAsc;
+        thId.textContent = `# ${sortAsc ? '↓' : '↑'}`;
+    }
+
+    function aggiornaRuolo(idUtente, select) {
+        const ruolo = select.value;
+        select.className = 'stato-select stato-' + ruolo;
+        fetch('/Home/AggiornaRuolo', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `idUtente=${idUtente}&ruolo=${encodeURIComponent(ruolo)}`
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (!data.success)
+                mostraToast('Errore aggiornamento ruolo');
+            else
+                mostraToast('Ruolo aggiornato');
+        })
+        .catch(() => mostraToast('Errore di connessione'));
+    }
+
+    function filtraUtenti() {
+        const testo = document.getElementById('searchUtenti').value.toLowerCase().trim();
+        document.querySelectorAll('.utente-row').forEach(row => {
+            const search = row.dataset.search;
+            row.style.display = search.includes(testo) ? '' : 'none';
+        });
+    }
+
+    function apriModificaUtente(btn) {
+        const d = btn.dataset;
+        document.getElementById('editUtenteId').value = d.id;
+        document.getElementById('editUtenteUsername').value = d.username;
+        document.getElementById('editUtentNome').value = d.nome;
+        document.getElementById('editUtenteCognome').value = d.cognome;
+        document.getElementById('editUtenteEmail').value = d.email;
+        document.getElementById('editUtentePassword').value = '';
+        document.getElementById('editUtenteRuolo').value = d.ruolo;
+        document.getElementById('adminOverlayUtente').style.display = 'block';
+        document.getElementById('adminModalUtente').style.display = 'block';
+    }
+
+    function chiudiModificaUtente() {
+        document.getElementById('adminOverlayUtente').style.display = 'none';
+        document.getElementById('adminModalUtente').style.display = 'none';
+    }
+</script>
+}

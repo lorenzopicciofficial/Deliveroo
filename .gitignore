@@ -1,0 +1,26 @@
+# Credenziali e configurazione locale
+appsettings.Development.json
+appsettings.*.json
+database/hash_passwords.sql
+database/seed_demo.sql
+*.env
+.env
+.env.test
+
+
+# Build output
+bin/
+obj/
+
+# macOS
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
+wwwroot/.vscode/
+*.user
+*.DotSettings.user
+
+# Pacchetti NuGet (si rigenerano con dotnet restore)
+packages/

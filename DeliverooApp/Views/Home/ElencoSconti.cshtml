@@ -1,0 +1,111 @@
+@{
+    ViewData["Title"] = "Gestione Sconti";
+    Layout = "_Layout";
+    var sconti = ViewBag.Sconti as List<DeliverooApp.Models.Sconto>;
+    var articoli = ViewBag.Articoli as List<DeliverooApp.Models.Articolo>;
+}
+
+<div class="admin-articoli-wrapper">
+
+    <div class="admin-header">
+        <div style="display:flex; align-items:center; gap:1rem;">
+            <h1>Gestione Sconti</h1>
+            <span class="badge-admin">ADMIN</span>
+        </div>
+        <button class="btn-admin-add" onclick="toggleForm()">+ Nuovo sconto</button>
+    </div>
+
+    <!-- FORM AGGIUNTA -->
+    <div class="admin-form-box" id="formAggiunta" style="display:none">
+        <h3>Nuovo sconto</h3>
+        <form method="post" asp-action="AggiungiSconto">
+            <div class="admin-form-grid">
+                <div class="form-group">
+                    <label>Articolo</label>
+                    <select name="idArticolo" required>
+                        <option value="">Seleziona articolo...</option>
+                        @foreach (var a in articoli)
+                        {
+                            <option value="@a.Id">@a.Nome</option>
+                        }
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Sconto (%)</label>
+                    <input type="number" name="percentuale" min="1" max="99" required/>
+                </div>
+                <div class="form-group">
+                    <label>Data e ora inizio</label>
+                    <input type="datetime-local" name="dataInizio" required/>
+                </div>
+                <div class="form-group">
+                    <label>Data e ora fine</label>
+                    <input type="datetime-local" name="dataFine" required/>
+                </div>
+            </div>
+            <div class="admin-form-actions">
+                <button type="submit" class="btn-admin-save">Salva</button>
+                <button type="button" class="btn-admin-cancel" onclick="toggleForm()">Annulla</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- TABELLA -->
+    <div class="admin-table-wrap">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Articolo</th>
+                    <th>Sconto</th>
+                    <th>Inizio</th>
+                    <th>Fine</th>
+                    <th>Stato</th>
+                    <th>Azioni</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (sconti != null && sconti.Count > 0)
+                {
+                    @foreach (var s in sconti)
+                    {
+                        var nomeArticolo = articoli?.FirstOrDefault(a => a.Id == s.IdArticolo)?.Nome ?? s.IdArticolo.ToString();
+                        string stato = s.IsAttivo ? "attivo" : (DateTime.Now < s.DataInizio ? "programmato" : "scaduto");
+                        <tr>
+                            <td><strong>@nomeArticolo</strong></td>
+                            <td><span class="sconto-badge">-@s.Percentuale%</span></td>
+                            <td class="td-muted">@s.DataInizio.ToString("dd MMM yyyy, HH:mm")</td>
+                            <td class="td-muted">@s.DataFine.ToString("dd MMM yyyy, HH:mm")</td>
+                            <td>
+                                <span class="stato-badge stato-@stato">@stato</span>
+                            </td>
+                            <td>
+                                <form method="post" asp-action="EliminaSconto"
+                                      onsubmit="return confirm('Eliminare questo sconto?')">
+                                    <input type="hidden" name="id" value="@s.Id"/>
+                                    <button type="submit" class="btn-admin-delete">Elimina</button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="6" style="text-align:center; padding:2rem; color:#8a8278;">
+                            Nessuno sconto presente
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    function toggleForm() {
+        const f = document.getElementById('formAggiunta');
+        f.style.display = f.style.display === 'none' ? 'block' : 'none';
+    }
+</script>
+}

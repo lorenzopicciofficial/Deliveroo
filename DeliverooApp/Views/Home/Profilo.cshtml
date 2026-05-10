@@ -1,0 +1,152 @@
+@model DeliverooApp.Models.Utente
+@{
+    ViewData["Title"] = "Il mio profilo";
+    Layout = "_Layout";
+}
+
+<div class="profilo-wrapper">
+
+    <div class="profilo-header">
+        <div class="profilo-avatar">@Model.Nome.Substring(0,1).ToUpper()@Model.Cognome.Substring(0,1).ToUpper()</div>
+        <div>
+            <h1>@Model.Nome @Model.Cognome</h1>
+            <p class="profilo-username">@("@" + Model.UserName)</p>
+        </div>
+    </div>
+
+    @if (ViewBag.Successo != null)
+    {
+        <div class="profilo-successo">✓ @ViewBag.Successo</div>
+    }
+
+    <form method="post" asp-action="Profilo">
+        <input type="hidden" name="UserName" value="@Model.UserName"/>
+        <input type="hidden" name="Password" value="@Model.Password"/>
+        <input type="hidden" name="Ruolo" value="@Model.Ruolo"/>
+        <input type="hidden" name="DataCreazione" value="@Model.DataCreazione"/>
+
+        <!-- DATI PERSONALI -->
+        <div class="profilo-card">
+            <h2>Dati personali</h2>
+            <div class="admin-form-grid">
+                <div class="form-group">
+                    <label>Nome</label>
+                    <input type="text" name="Nome" value="@Model.Nome" required/>
+                </div>
+                <div class="form-group">
+                    <label>Cognome</label>
+                    <input type="text" name="Cognome" value="@Model.Cognome" required/>
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" name="Email" value="@Model.Email" required/>
+                </div>
+                <div class="form-group">
+                    <label>Telefono <span class="profilo-opzionale">(opzionale)</span></label>
+                    <input type="tel" name="Telefono" value="@Model.Telefono" placeholder="+39 000 0000000"/>
+                </div>
+            </div>
+        </div>
+
+        <!-- INDIRIZZO PREDEFINITO -->
+        <div class="profilo-card">
+            <h2>Indirizzo predefinito</h2>
+            <p class="profilo-sub">Verrà precompilato automaticamente al momento dell'ordine</p>
+            <div class="admin-form-grid">
+                <div class="form-group full">
+                    <label>Via / Piazza</label>
+                    <input type="text" id="profiloVia" placeholder="es. Via Roma"
+                           oninput="aggiornaCampoIndirizzo()"/>
+                </div>
+                <div class="form-group">
+                    <label>Numero civico</label>
+                    <input type="text" id="profiloCivico" placeholder="es. 12"
+                           oninput="aggiornaCampoIndirizzo()"/>
+                </div>
+                <div class="form-group">
+                    <label>Città</label>
+                    <input type="text" id="profiloCitta" placeholder="es. Milano"
+                           oninput="aggiornaCampoIndirizzo()"/>
+                </div>
+            </div>
+            <input type="hidden" name="Indirizzo" id="profiloIndirizzo" value="@Model.Indirizzo"/>
+        </div>
+
+        <!-- CARTA PREDEFINITA -->
+        <div class="profilo-card">
+            <h2>Carta predefinita</h2>
+            <p class="profilo-sub">Salviamo solo le ultime 4 cifre — nessun dato sensibile</p>
+
+            @if (!string.IsNullOrEmpty(Model.CartaUltime4))
+            {
+                <div class="ordine-carta-preview" style="margin-bottom:1rem; max-width:100%">
+                    <div class="carta-chip"></div>
+                    <p class="carta-numero">**** **** **** @Model.CartaUltime4</p>
+                    <div class="carta-bottom">
+                        <div>
+                            <p class="carta-label">Intestatario</p>
+                            <p class="carta-value">@Model.CartaIntestatario.ToUpper()</p>
+                        </div>
+                        <div>
+                            <p class="carta-label">Scadenza</p>
+                            <p class="carta-value">@Model.CartaScadenza</p>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <div class="admin-form-grid">
+                <div class="form-group full">
+                    <label>Intestatario carta</label>
+                    <input type="text" name="CartaIntestatario" value="@Model.CartaIntestatario"
+                           placeholder="Mario Rossi"/>
+                </div>
+                <div class="form-group">
+                    <label>Ultime 4 cifre</label>
+                    <input type="text" name="CartaUltime4" value="@Model.CartaUltime4"
+                           maxlength="4" placeholder="1234"/>
+                </div>
+                <div class="form-group">
+                    <label>Scadenza (MM/AA)</label>
+                    <input type="text" name="CartaScadenza" value="@Model.CartaScadenza"
+                           maxlength="5" placeholder="12/28"/>
+                </div>
+            </div>
+        </div>
+
+        <div class="admin-form-actions">
+            <button type="submit" class="btn-admin-save" style="padding:.8rem 2rem">
+                Salva modifiche
+            </button>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+<script>
+    window.addEventListener('load', function() {
+        const ind = '@Model.Indirizzo';
+        if (ind && ind.trim() !== '') {
+            const virgolaIdx = ind.lastIndexOf(',');
+            if (virgolaIdx > -1) {
+                const viaCivico = ind.substring(0, virgolaIdx).trim();
+                const citta = ind.substring(virgolaIdx + 1).trim();
+                const parti = viaCivico.split(' ');
+                const civico = parti[parti.length - 1];
+                const via = parti.slice(0, -1).join(' ');
+                document.getElementById('profiloVia').value = via;
+                document.getElementById('profiloCivico').value = civico;
+                document.getElementById('profiloCitta').value = citta;
+            }
+        }
+    });
+
+    function aggiornaCampoIndirizzo() {
+        const via = document.getElementById('profiloVia').value.trim();
+        const civico = document.getElementById('profiloCivico').value.trim();
+        const citta = document.getElementById('profiloCitta').value.trim();
+        document.getElementById('profiloIndirizzo').value =
+            via && civico && citta ? `${via} ${civico}, ${citta}` : '';
+    }
+</script>
+}

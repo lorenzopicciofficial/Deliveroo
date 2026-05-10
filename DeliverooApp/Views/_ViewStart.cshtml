@@ -1,0 +1,8 @@
+﻿@{
+    Layout = "_Layout";
+
+    if (Context.Session.GetString("user") == "admin")
+    {
+        Layout = "_LayoutAdmin";
+    }
+}

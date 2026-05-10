@@ -1,0 +1,124 @@
+﻿@model List<DeliverooApp.Models.Articolo>
+@{
+    bool isLoggato = ViewBag.IsLoggato ?? false;
+    var mediaVoti = ViewBag.MediaVoti as Dictionary<int, double> ?? new Dictionary<int, double>();
+    var scontiAttivi = ViewBag.ScontiAttivi as Dictionary<int, DeliverooApp.Models.Sconto>
+        ?? new Dictionary<int, DeliverooApp.Models.Sconto>();
+    var preferiti = ViewBag.Preferiti as HashSet<int> ?? new HashSet<int>();
+
+    ViewData["Title"] = "Preferiti";
+    Layout = "_Layout";
+}
+
+<section class="catalog-section">
+    <div class="preferiti-header">
+        <p class="hero-eyebrow">La tua selezione</p>
+        <h1 class="section-title">I tuoi preferiti</h1>
+    </div>
+
+    <div class="products-grid" id="productsGrid">
+        @if (Model != null && Model.Count > 0)
+        {
+            @foreach (var a in Model)
+            {
+                double media = mediaVoti.ContainsKey(a.Id) ? mediaVoti[a.Id] : 0;
+                var sconto = scontiAttivi.ContainsKey(a.Id) ? scontiAttivi[a.Id] : null;
+                double prezzoFinale = sconto != null
+                    ? a.PrezzoListino * (1 - sconto.Percentuale / 100.0)
+                    : a.PrezzoListino;
+                bool isPref = preferiti.Contains(a.Id);
+
+                <div class="product-card" data-cat="@a.Categoria" data-name="@a.Nome.ToLower()">
+                    <div class="product-img-wrap">
+                        <a href="/Home/DettaglioArticolo/@a.Id" class="product-img-link">
+                            @if (!string.IsNullOrEmpty(a.FotoUrl))
+                            {
+                                <img src="@a.FotoUrl" alt="@a.Nome"/>
+                            }
+                            else
+                            {
+                                <div class="product-img-placeholder">~</div>
+                            }
+                        </a>
+                        @if (isLoggato)
+                        {
+                            <button class="btn-preferito @(isPref ? "attivo" : "")"
+                                    onclick="togglePreferito(event, @a.Id, this)"
+                                    title="@(isPref ? "Rimuovi dai preferiti" : "Aggiungi ai preferiti")">
+                                ♥
+                            </button>
+                        }
+                    </div>
+                    <div class="product-info">
+                        <span class="product-cat-badge">@a.Categoria</span>
+                        <a href="/Home/DettaglioArticolo/@a.Id" class="product-name">@a.Nome</a>
+                        @if (media > 0)
+                        {
+                            <div class="product-stars">
+                                @for (int i = 1; i <= 5; i++)
+                                {
+                                    <span class="product-star @(i <= Math.Round(media) ? "product-star-piena" : "")">★</span>
+                                }
+                                <span class="product-star-media">@media.ToString("0.0")</span>
+                            </div>
+                        }
+                        <div class="product-footer">
+                            @if (sconto != null)
+                            {
+                                <div class="product-price-wrap">
+                                    <span class="product-price product-price-scontato">€ @prezzoFinale.ToString("0.00")</span>
+                                    <span class="product-price-originale">€ @a.PrezzoListino.ToString("0.00")</span>
+                                    <span class="sconto-badge-card">-@sconto.Percentuale%</span>
+                                </div>
+                            }
+                            else
+                            {
+                                <span class="product-price">€ @a.PrezzoListino.ToString("0.00")</span>
+                            }
+                            <button class="btn-add" onclick="aggiungiEApri(@a.Id)">+ Aggiungi</button>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+        else
+        {
+            <p class="empty-msg">Non hai ancora salvato articoli preferiti.</p>
+        }
+    </div>
+</section>
+
+@section Scripts {
+    <script>
+        function aggiungiEApri(id) {
+            fetch('/Home/MettiNelCarrello/' + id)
+                .then(() => {
+                    fetch('/Home/CarrelloJson')
+                        .then(r => r.json())
+                        .then(data => {
+                            document.getElementById('cartCountBadge').textContent = data.numeroArticoli;
+                            mostraToast('Articolo aggiunto al carrello');
+                        });
+                });
+        }
+
+        function togglePreferito(e, id, btn) {
+            e.preventDefault();
+            e.stopPropagation();
+            fetch('/Home/TogglePreferito?idArticolo=' + id, { method: 'POST' })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        btn.classList.toggle('attivo', data.preferito);
+                        btn.title = data.preferito ? 'Rimuovi dai preferiti' : 'Aggiungi ai preferiti';
+                        if (!data.preferito) {
+                            btn.closest('.product-card')?.remove();
+                            if (!document.querySelector('.product-card')) {
+                                document.getElementById('productsGrid').innerHTML = '<p class="empty-msg">Non hai ancora salvato articoli preferiti.</p>';
+                            }
+                        }
+                    }
+                });
+        }
+    </script>
+}

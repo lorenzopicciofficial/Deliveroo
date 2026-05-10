@@ -1,0 +1,184 @@
+﻿@model List<DeliverooApp.Models.Ordine>
+@{
+    ViewData["Title"] = "Elenco Ordini";
+    Layout = "_Layout";
+    var articoloTop = ViewBag.ArticoloPiuOrdinato as DeliverooApp.Models.Articolo;
+    double incasso = ViewBag.IncassoTotale;
+}
+
+<div class="ordini-wrapper">
+
+    <div class="admin-header">
+        <div style="display:flex; align-items:center; gap:1rem;">
+            <h1>Gestione ordini</h1>
+            <span class="badge-admin">ADMIN</span>
+        </div>
+        <div style="display:flex; gap:.8rem; align-items:center;">
+            <a href="/Home/ExportOrdiniCsv" class="btn-export">Esporta CSV</a>
+        </div>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <p class="stat-label">Incasso totale</p>
+            <p class="stat-value">€ @incasso.ToString("0.00")</p>
+            <p class="stat-sub">da tutti gli ordini</p>
+        </div>
+
+        <div class="stat-card">
+            <p class="stat-label">Ordini totali</p>
+            <p class="stat-value">@Model.Count</p>
+            <p class="stat-sub">ordini effettuati</p>
+        </div>
+
+        @if (articoloTop != null)
+        {
+        <div class="stat-card stat-card-highlight">
+            <p class="stat-label">Articolo più ordinato</p>
+            <p class="stat-value">@articoloTop.Nome</p>
+            <p class="stat-sub">@articoloTop.NumOrdini ordini totali</p>
+        </div>
+        }
+    </div>
+
+    <!-- FILTRI -->
+    <div class="ordini-filtri">
+        <div class="admin-search-bar" style="flex:2">
+            <input type="text" id="searchOrdini" placeholder="Cerca..." oninput="filtraOrdini()"/>
+        </div>
+        <select id="filtroStato" class="filtro-select" onchange="filtraOrdini()">
+            <option value="">Tutti gli stati</option>
+            <option value="in attesa">In Attesa</option>
+            <option value="consegnato">Consegnato</option>
+            <option value="eliminato">Eliminato</option>
+        </select>
+        <div style="display:flex; flex-direction:column; gap:2px;">
+            <span style="font-size:.7rem; color:#8a8278; font-weight:600; text-transform:uppercase; letter-spacing:.5px;">Da</span>
+            <input type="date" id="filtroDal" class="filtro-date" onchange="filtraOrdini()" title="Dal"/>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:2px;">
+            <span style="font-size:.7rem; color:#8a8278; font-weight:600; text-transform:uppercase; letter-spacing:.5px;">A</span>
+            <input type="date" id="filtroAl" class="filtro-date" onchange="filtraOrdini()" title="Al"/>
+        </div>
+        <button class="btn-admin-cancel" onclick="resetFiltri()">Reset</button>
+    </div>
+
+    @if (Model.Count == 0)
+    {
+    <div class="ordini-empty">
+        <p>Nessun ordine ancora effettuato.</p>
+    </div>
+    }
+    else
+    {
+    <div class="ordini-table-wrap">
+        <table class="ordini-table">
+            <thead>
+            <tr>
+                <th id="th-id" class="th-sortable" onclick="sortById()"># ↕</th>
+                <th>Cliente</th>
+                <th>Indirizzo</th>
+                <th>Data</th>
+                <th>Importo</th>
+                <th>Stato</th>
+                <th></th>
+            </tr>
+            </thead>
+            <tbody>
+            @foreach (var o in Model)
+            {
+                <tr class="ordine-row"
+                    data-id="@o.IdOrdine"
+                    data-nome="@o.NomeCliente.ToLower() @o.Indirizzo.ToLower()"
+                    data-stato="@o.Stato.ToLower()"
+                    data-data="@o.Data.ToString("yyyy-MM-dd")">
+                <td class="td-id">#@o.IdOrdine</td>
+                <td class="td-name">@o.NomeCliente</td>
+                <td class="td-muted">@o.Indirizzo</td>
+                <td class="td-muted">@o.Data.ToString("dd MMM yyyy, HH:mm")</td>
+                <td class="td-price">€ @o.ImportoTotale.ToString("0.00")</td>
+                <td>
+                    <div class="stato-select-wrap">
+                        <select class="stato-select stato-@o.Stato.ToLower().Replace(" ", "-")"
+                                onchange="aggiornaStato(@o.IdOrdine, this)">
+                            <option value="in attesa" selected="@(o.Stato.ToLower() == "in attesa" ? "selected" : null)">In Attesa</option>
+                            <option value="consegnato" selected="@(o.Stato.ToLower() == "consegnato" ? "selected" : null)">Consegnato</option>
+                            <option value="eliminato" selected="@(o.Stato.ToLower() == "eliminato" ? "selected" : null)">Eliminato</option>
+                        </select>
+                    </div>
+                </td>
+                <td>
+                    <a class="btn-dettaglio" asp-action="DettaglioOrdine" asp-route-id="@o.IdOrdine">
+                        Dettaglio
+                    </a>
+                </td>
+            </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+    }
+</div>
+
+@section Scripts {
+<script>
+    function filtraOrdini() {
+        const testo = document.getElementById('searchOrdini').value.toLowerCase().trim();
+        const stato = document.getElementById('filtroStato').value.toLowerCase();
+        const dal = document.getElementById('filtroDal').value;
+        const al = document.getElementById('filtroAl').value;
+
+        document.querySelectorAll('.ordine-row').forEach(row => {
+            const nome = row.dataset.nome;
+            const statoRow = row.dataset.stato;
+            const data = row.dataset.data;
+
+            const matchNome = nome.includes(testo);
+            const matchStato = stato === '' || statoRow === stato;
+            const matchDal = dal === '' || data >= dal;
+            const matchAl = al === '' || data <= al;
+
+            row.style.display = matchNome && matchStato && matchDal && matchAl ? '' : 'none';
+        });
+    }
+
+    let sortAsc = true;
+    function sortById() {
+        const tbody = document.querySelector('table tbody');
+        const thId = document.getElementById('th-id');
+        const rows = Array.from(tbody.querySelectorAll('tr[data-id]'));
+        rows.sort((a, b) => {
+            const diff = parseInt(a.dataset.id) - parseInt(b.dataset.id);
+            return sortAsc ? diff : -diff;
+        });
+        rows.forEach(row => tbody.appendChild(row));
+        sortAsc = !sortAsc;
+        thId.textContent = `# ${sortAsc ? '↓' : '↑'}`;
+    }
+
+    function resetFiltri() {
+        document.getElementById('searchOrdini').value = '';
+        document.getElementById('filtroStato').value = '';
+        document.getElementById('filtroDal').value = '';
+        document.getElementById('filtroAl').value = '';
+        filtraOrdini();
+    }
+
+    function aggiornaStato(idOrdine, select) {
+        const stato = select.value;
+        select.className = 'stato-select stato-' + stato.replace(' ', '-');
+
+        fetch('/Home/AggiornaStato', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `idOrdine=${idOrdine}&stato=${encodeURIComponent(stato)}`
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (!data.success)
+                mostraToast('Errore aggiornamento stato');
+        })
+        .catch(() => mostraToast('Errore di connessione'));
+    }
+</script>
+}

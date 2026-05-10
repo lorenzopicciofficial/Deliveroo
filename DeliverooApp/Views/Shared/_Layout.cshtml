@@ -1,0 +1,871 @@
+﻿<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta name="keywords" content="Deliveroo"/>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>@ViewData["Title"] - Caffè Ritmo</title>
+    <script type="importmap"></script>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true"/>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <script>(function(){var t=localStorage.getItem('theme');if(t)document.documentElement.setAttribute('data-theme',t);})();</script>
+</head>
+<body>
+
+<!-- BOT -->
+<div class="bot-bubble" id="botBubble" onclick="toggleBot()">
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-3 3v-3z"/>
+    </svg>
+</div>
+
+<div class="bot-panel" id="botPanel">
+    <div class="bot-header">
+        <div class="bot-header-info">
+            <div class="bot-avatar">R</div>
+            <div>
+                <p class="bot-name">Ritmo Assistant</p>
+                <p class="bot-status">Online</p>
+            </div>
+        </div>
+        <button class="bot-close" onclick="toggleBot()">✕</button>
+    </div>
+
+    <div class="bot-messages" id="botMessages">
+        <div class="bot-msg bot">
+            Ciao! Sono il tuo assistente virtuale del Caffè Ritmo. Seleziona una categoria per iniziare.
+        </div>
+        <div class="bot-suggestions" id="botSuggestions">
+            <button class="bot-suggestion" onclick="apriCategoria('ordini')">🛒 Ordini</button>
+            <button class="bot-suggestion" onclick="apriCategoria('pagamenti')">💳 Pagamenti</button>
+            <button class="bot-suggestion" onclick="apriCategoria('menu')">🍽 Menu e allergeni</button>
+            <button class="bot-suggestion" onclick="apriCategoria('logistica')">🚴 Consegna e tempi</button>
+            <button class="bot-suggestion" onclick="apriCategoria('info')">ℹ️ Informazioni generali</button>
+        </div>
+    </div>
+
+    <div class="bot-footer">
+        <button class="bot-reset" onclick="resetBot()">↩ Ricomincia</button>
+    </div>
+</div>
+
+<div class="toast" id="toast">
+    <div class="toast-icon">✓</div>
+    <span id="toastMsg">Articolo aggiunto al carrello</span>
+</div>
+
+<div class="order-overlay" id="orderOverlay"></div>
+<div class="order-modal" id="orderModal">
+    <div class="order-modal-inner" id="orderModalInner">
+
+        <!-- STEP 1: Form indirizzo -->
+        <div class="order-form" id="orderForm">
+            <div class="order-form-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                <h2 style="margin:0">Dove ti portiamo l'ordine?</h2>
+                <button class="modal-close-btn" onclick="chiudiOrdineModal()">✕</button>
+            </div>
+            <button type="button" class="btn-completa" id="btnCompleta" onclick="completaIndirizzo()" style="display:none">
+                📍 Usa indirizzo salvato
+            </button>
+            <div class="order-form-fields">
+                <div class="form-group full">
+                    <label>Via / Piazza</label>
+                    <input type="text" id="inputVia" placeholder="es. Via Roma"/>
+                </div>
+                <div class="form-group">
+                    <label>Numero civico</label>
+                    <input type="text" id="inputCivico" placeholder="es. 12"/>
+                </div>
+                <div class="form-group">
+                    <label>Città</label>
+                    <input type="text" id="inputCitta" placeholder="es. 31033 Castelfranco Veneto TV"/>
+                </div>
+                <div class="form-group full">
+                    <label>Note per l'ordine (opzionale) - esempio: tipologia del tè</label>
+                    <textarea id="inputNote" placeholder="es. Tè al limone, bignè alla crema, citofono rotto…" rows="3"></textarea>
+                </div>
+            </div>
+            <div class="admin-form-actions" style="margin-top:1.2rem">
+                <button class="btn-ordina" id="btnConferma" onclick="confermaConIndirizzo()">
+                    Continua al pagamento
+                </button>
+            </div>
+        </div>
+
+        <!-- STEP 2: Pagamento -->
+        <div class="order-form" id="orderPagamento" style="display:none">
+            <div class="order-form-header">
+                <div class="pagamento-header">
+                    <div class="pagamento-lock">🔒</div>
+                    <h2>Pagamento sicuro</h2>
+                    <p class="pagamento-sub">I tuoi dati sono protetti</p>
+                </div>
+                <button class="modal-close-btn" onclick="chiudiOrdineModal()">✕</button>
+            </div>
+
+            <div class="pagamento-body">
+                <div class="carta-preview" id="cartaPreview">
+                    <div class="carta-chip"></div>
+                    <p class="carta-numero" id="cartaNumeroPreview">**** **** **** ****</p>
+                    <div class="carta-bottom">
+                        <div>
+                            <p class="carta-label">Intestatario</p>
+                            <p class="carta-value" id="cartaIntestatarioPreview">NOME COGNOME</p>
+                        </div>
+                        <div>
+                            <p class="carta-label">Scadenza</p>
+                            <p class="carta-value" id="cartaScadenzaPreview">MM/AA</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pagamento-form-side">
+                    <button type="button" class="btn-completa" id="btnCompletaCarta" onclick="completaCarta()" style="display:none">
+                        💳 Usa carta salvata
+                    </button>
+                    <div class="order-form-fields">
+                        <div class="form-group full">
+                            <label>Numero carta</label>
+                            <input type="text" id="inputCarta" placeholder="1234 5678 9012 3456"
+                                   maxlength="19" oninput="formattaCarta(this); aggiornaPreview()"/>
+                        </div>
+                        <div class="form-group full">
+                            <label>Intestatario</label>
+                            <input type="text" id="inputIntestatario" placeholder="Mario Rossi"
+                                   oninput="aggiornaPreview()"/>
+                        </div>
+                        <div class="form-group">
+                            <label>Scadenza (MM/AA)</label>
+                            <input type="text" id="inputScadenza" placeholder="12/28"
+                                   maxlength="5" oninput="formattaScadenza(this); aggiornaPreview()"/>
+                        </div>
+                        <div class="form-group">
+                            <label>CVV</label>
+                            <input type="password" id="inputCvv" placeholder="***" maxlength="3"/>
+                        </div>
+                    </div>
+                    <div class="pagamento-actions">
+                        <button class="btn-ordina" onclick="pagaOra()">Paga ora</button>
+                        <button class="btn-contanti" onclick="pagaInContanti()">Paga in contanti</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- STEP 3: Spinner -->
+        <div class="order-spinner" id="orderSpinner" style="display:none">
+            <div class="spinner-ring"></div>
+            <p>Stiamo elaborando il tuo ordine…</p>
+        </div>
+
+        <!-- STEP 4: Successo -->
+        <div class="order-success" id="orderSuccess" style="display:none">
+            <div class="order-check">✓</div>
+            <h2>Grazie per il tuo ordine!</h2>
+            <p>il nostro rider è in arrivo</p>
+            <p class="cart-login-msg" id="tempoConsegna" style="font-size:1rem; margin-top:.5rem;"></p>
+            <button onclick="chiudiOrdineModal()" class="btn-ordina" style="margin-top:1.2rem">Chiudi</button>
+        </div>
+
+    </div>
+</div>
+
+<div class="cart-overlay" id="cartOverlay" onclick="chiudiCarrello()"></div>
+
+<div class="cart-drawer" id="cartDrawer">
+    <div class="cart-drawer-header">
+        <h3>Il tuo carrello</h3>
+        <button class="cart-close" onclick="chiudiCarrello()">✕</button>
+    </div>
+    <div class="cart-drawer-body" id="cartBody">
+        <p class="cart-loading">Caricamento...</p>
+    </div>
+    <div class="cart-drawer-footer" id="cartFooter"></div>
+</div>
+
+<header>
+    <nav class="navbar-custom">
+        <a class="nav-logo" asp-controller="Home" asp-action="Index">
+            Caffè <span>Ritmo</span>
+        </a>
+
+        <button class="nav-hamburger" id="navHamburger" aria-label="Menu" onclick="toggleNav()">
+            <span></span>
+            <span></span>
+            <span></span>
+        </button>
+
+        <ul class="nav-links" id="navLinks">
+            <li><a asp-controller="Home" asp-action="Index">Home</a></li>
+
+            @if (Context.Session.GetString("ruolo") == "admin")
+            {
+            <li><a asp-controller="Home" asp-action="MieiOrdini">I miei ordini</a></li>
+            }
+            else if (Context.Session.GetString("ruolo") == "user")
+            {
+            <li><a asp-controller="Home" asp-action="MieiOrdini">I miei ordini</a></li>
+            <li><a asp-controller="Home" asp-action="Preferiti">♥ Preferiti</a></li>
+            }
+        </ul>
+
+        <div class="nav-actions">
+            <button class="theme-toggle" onclick="toggleTheme()" title="Cambia tema" aria-label="Cambia tema">
+                <span class="theme-toggle-icon">🌙</span>
+            </button>
+            <button class="nav-cart" onclick="apriCarrello()">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none"
+                     viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                          d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.5 6h13"/>
+                </svg>
+                <span class="cart-count" id="cartCountBadge">@Context.Items["numero"]</span>
+            </button>
+
+            @if (Context.Session.GetString("user") != null)
+            {
+            <div class="nav-user">
+                @if (Context.Session.GetString("ruolo") == "admin")
+                {
+                <div class="nav-admin" id="navAdmin">
+                    <button class="nav-admin-button" type="button" onclick="toggleAdminMenu(event)">
+                        Admin
+                        <span class="nav-admin-arrow">▼</span>
+                    </button>
+                    <div class="nav-admin-menu">
+                        <a asp-controller="Home" asp-action="ElencoArticoli">
+                            <span class="nav-account-icon">🗂</span>
+                            Articoli
+                        </a>
+                        <a asp-controller="Home" asp-action="ElencoOrdini">
+                            <span class="nav-account-icon">📋</span>
+                            Ordini
+                        </a>
+                        <a asp-controller="Home" asp-action="ElencoAssociazioni">
+                            <span class="nav-account-icon">🔗</span>
+                            Associazioni
+                        </a>
+                        <a asp-controller="Home" asp-action="ElencoUtenti">
+                            <span class="nav-account-icon">👥</span>
+                            Utenti
+                        </a>
+                        <a asp-controller="Home" asp-action="Insights">
+                            <span class="nav-account-icon">📊</span>
+                            Statistiche
+                        </a>
+                        <a asp-controller="Home" asp-action="ElencoSconti">
+                            <span class="nav-account-icon">🏷</span>
+                            Sconti
+                        </a>
+                        <a asp-controller="Home" asp-action="Impostazioni">
+                            <span class="nav-account-icon">🕐</span>
+                            Orari
+                        </a>
+                    </div>
+                </div>
+                }
+                <div class="nav-account" id="navAccount">
+                    <button class="nav-account-button" type="button" onclick="toggleAccountMenu(event)">
+                        @Context.Session.GetString("user")
+                        <span class="nav-account-arrow">▼</span>
+                    </button>
+                    <div class="nav-account-menu" id="navAccountMenu">
+                        <a asp-controller="Home" asp-action="Profilo">
+                            <span class="nav-account-icon">👤</span>
+                            Profilo
+                        </a>
+                        <a asp-controller="Home" asp-action="Preferiti">
+                            <span class="nav-account-icon">♥</span>
+                            Preferiti
+                        </a>
+                    </div>
+                </div>
+                <a class="nav-logout" asp-controller="Home" asp-action="Logout">Esci</a>
+            </div>
+            }
+            else
+            {
+            <a class="nav-login" asp-controller="Home" asp-action="Login">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                </svg>
+                <span>Accedi</span>
+            </a>
+            }
+        </div>
+    </nav>
+</header>
+
+<main role="main" style="min-height: calc(100vh - 66px - 52px);">
+    @RenderBody()
+</main>
+
+<footer class="footer-custom">
+    <p>© 2026 Caffè Ritmo — Powered by Mano Airy e Lorenzo Picci — <a asp-controller="Home" asp-action="Privacy" style="color:inherit; text-decoration:underline;">Privacy Policy</a></p>
+</footer>
+
+<script src="~/lib/jquery/dist/jquery.min.js"></script>
+<script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+<script src="~/js/site.js" asp-append-version="true"></script>
+@await RenderSectionAsync("Scripts", required: false)
+
+<script>
+    let _indirizzo = '';
+    let _datiDefault = null;
+
+    function mostraToast(messaggio) {
+        const toast = document.getElementById('toast');
+        document.getElementById('toastMsg').textContent = messaggio;
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 2500);
+    }
+
+    function apriCarrello() {
+        document.getElementById('cartDrawer').classList.add('open');
+        document.getElementById('cartOverlay').classList.add('open');
+        aggiornaCarrello();
+    }
+
+    function chiudiCarrello() {
+        document.getElementById('cartDrawer').classList.remove('open');
+        document.getElementById('cartOverlay').classList.remove('open');
+    }
+
+    function aggiungiAlCarrello(id) {
+        fetch('/Home/MettiNelCarrello/' + id)
+            .then(() => aggiornaCarrello());
+    }
+
+    function rimuoviUno(id) {
+        fetch('/Home/RimuoviUno/' + id)
+            .then(() => aggiornaCarrello());
+    }
+
+    function svuotaCarrello() {
+        fetch('/Home/SvuotaCarrello')
+            .then(() => aggiornaCarrello());
+    }
+
+    function aggiornaCarrello() {
+        fetch('/Home/CarrelloJson')
+            .then(r => r.json())
+            .then(data => {
+                const body = document.getElementById('cartBody');
+                const footer = document.getElementById('cartFooter');
+                const badge = document.getElementById('cartCountBadge');
+
+                badge.textContent = data.numeroArticoli;
+
+                if (data.articoli.length === 0) {
+                    body.innerHTML = '<p class="cart-empty-msg">Il carrello è vuoto</p>';
+                    footer.innerHTML = '';
+                    return;
+                }
+
+                body.innerHTML = data.articoli.map(a => `
+                    <div class="cart-item">
+                        <div class="cart-item-info">
+                            <p class="cart-item-name">${a.nome}</p>
+                            <p class="cart-item-price">
+                                € ${(a.prezzoListino * a.quantita).toFixed(2)}
+                                ${a.hasSconto ? `<span style="text-decoration:line-through; color:#aaa; font-size:.8rem; margin-left:.3rem">€ ${(a.prezzoOriginale * a.quantita).toFixed(2)}</span>` : ''}
+                            </p>
+                        </div>
+                        <div class="cart-item-controls">
+                            <button class="qty-btn remove" onclick="rimuoviUno(${a.id})">−</button>
+                            <span class="qty-value">${a.quantita}</span>
+                            <button class="qty-btn" onclick="aggiungiAlCarrello(${a.id})">+</button>
+                        </div>
+                    </div>
+                `).join('');
+
+                const consiglioHtml = data.consigliato ? `
+                    <div class="cart-consiglio">
+                        <p class="cart-consiglio-label">Potrebbe interessarti</p>
+                        <div class="cart-consiglio-card">
+                            ${data.consigliato.fotoUrl
+                                ? `<img src="${data.consigliato.fotoUrl}" class="cart-consiglio-img"/>`
+                                : `<div class="cart-consiglio-img-placeholder"></div>`
+                            }
+                            <div class="cart-consiglio-info">
+                                <p class="cart-consiglio-nome">${data.consigliato.nome}</p>
+                                <p class="cart-consiglio-prezzo">€ ${data.consigliato.prezzoListino.toFixed(2)}</p>
+                            </div>
+                            <button class="cart-consiglio-btn" onclick="aggiungiAlCarrello(${data.consigliato.id})">+</button>
+                        </div>
+                    </div>
+                ` : '';
+
+                footer.innerHTML = `
+                    ${consiglioHtml}
+                    <div class="cart-total-row">
+                        <span class="cart-total-label">Totale</span>
+                        <span class="cart-total-value">€ ${data.totale.toFixed(2)}</span>
+                    </div>
+                    ${data.isLoggato
+                        ? data.isAperto
+                            ? `<button class="btn-ordina" onclick="ordinaOra()">Ordina ora</button>`
+                            : `<span class="btn-ordina disabled">Ordina ora</span>
+                               <p class="cart-login-msg">⏰ Siamo chiusi, non è possibile ordinare</p>`
+                        : `<span class="btn-ordina disabled">Ordina ora</span>
+                           <p class="cart-login-msg">
+                               <a href="/Home/Login">Accedi</a> per completare l'ordine
+                           </p>`
+                    }
+                    <button onclick="svuotaCarrello()" class="btn-svuota">Svuota carrello</button>
+                `;
+            });
+    }
+
+    function ordinaOra() {
+        chiudiCarrello();
+        document.getElementById('orderOverlay').style.display = 'block';
+        document.getElementById('orderModal').style.display = 'flex';
+        document.getElementById('orderForm').style.display = 'block';
+        document.getElementById('orderPagamento').style.display = 'none';
+        document.getElementById('orderSpinner').style.display = 'none';
+        document.getElementById('orderSuccess').style.display = 'none';
+
+        document.getElementById('inputVia').value = '';
+        document.getElementById('inputCivico').value = '';
+        document.getElementById('inputCitta').value = '';
+        document.getElementById('btnConferma').disabled = true;
+
+        document.getElementById('inputVia').oninput = controllaForm;
+        document.getElementById('inputCivico').oninput = controllaForm;
+        document.getElementById('inputCitta').oninput = controllaForm;
+
+        fetch('/Home/GetDatiDefault')
+            .then(r => r.json())
+            .then(dati => {
+                _datiDefault = dati;
+                if (dati.indirizzo && dati.indirizzo.trim() !== '') {
+                    document.getElementById('btnCompleta').style.display = 'block';
+                } else {
+                    document.getElementById('btnCompleta').style.display = 'none';
+                }
+                if (dati.cartaUltime4 && dati.cartaUltime4.trim() !== '') {
+                    document.getElementById('btnCompletaCarta').style.display = 'block';
+                } else {
+                    document.getElementById('btnCompletaCarta').style.display = 'none';
+                }
+            });
+    }
+
+    function completaIndirizzo() {
+        if (!_datiDefault || !_datiDefault.indirizzo) return;
+        const ind = _datiDefault.indirizzo;
+        const virgolaIdx = ind.lastIndexOf(',');
+        if (virgolaIdx > -1) {
+            const viaCivico = ind.substring(0, virgolaIdx).trim();
+            const citta = ind.substring(virgolaIdx + 1).trim();
+            const parti = viaCivico.split(' ');
+            const civico = parti[parti.length - 1];
+            const via = parti.slice(0, -1).join(' ');
+            document.getElementById('inputVia').value = via;
+            document.getElementById('inputCivico').value = civico;
+            document.getElementById('inputCitta').value = citta;
+        } else {
+            document.getElementById('inputVia').value = ind;
+        }
+        controllaForm();
+    }
+
+    function completaCarta() {
+        if (!_datiDefault || !_datiDefault.cartaUltime4) return;
+        document.getElementById('inputIntestatario').value = _datiDefault.cartaIntestatario;
+        document.getElementById('inputScadenza').value = _datiDefault.cartaScadenza;
+        document.getElementById('cartaNumeroPreview').textContent = '**** **** **** ' + _datiDefault.cartaUltime4;
+        document.getElementById('cartaIntestatarioPreview').textContent = _datiDefault.cartaIntestatario.toUpperCase();
+        document.getElementById('cartaScadenzaPreview').textContent = _datiDefault.cartaScadenza;
+        document.getElementById('inputCarta').value = '0000 0000 0000 ' + _datiDefault.cartaUltime4;
+    }
+
+    function controllaForm() {
+        const via = document.getElementById('inputVia').value.trim();
+        const civico = document.getElementById('inputCivico').value.trim();
+        const citta = document.getElementById('inputCitta').value.trim();
+        document.getElementById('btnConferma').disabled = !(via && civico && citta);
+    }
+
+    let _note = '';
+
+    function confermaConIndirizzo() {
+        const via = document.getElementById('inputVia').value.trim();
+        const civico = document.getElementById('inputCivico').value.trim();
+        const citta = document.getElementById('inputCitta').value.trim();
+        if (!via || !civico || !citta) return;
+
+        _indirizzo = `${via} ${civico}, ${citta}`;
+        _note = document.getElementById('inputNote').value.trim();
+        document.getElementById('orderForm').style.display = 'none';
+        document.getElementById('orderPagamento').style.display = 'block';
+
+        document.getElementById('inputCarta').value = '';
+        document.getElementById('inputIntestatario').value = '';
+        document.getElementById('inputScadenza').value = '';
+        document.getElementById('inputCvv').value = '';
+        aggiornaPreview();
+    }
+
+    function formattaCarta(input) {
+        let val = input.value.replace(/\D/g, '').substring(0, 16);
+        input.value = val.replace(/(.{4})/g, '$1 ').trim();
+    }
+
+    function formattaScadenza(input) {
+        let val = input.value.replace(/\D/g, '').substring(0, 4);
+        if (val.length >= 2) val = val.substring(0, 2) + '/' + val.substring(2);
+        input.value = val;
+
+        if (val.length === 5) {
+            const mese = parseInt(val.substring(0, 2));
+            const anno = parseInt('20' + val.substring(3, 5));
+            const oggi = new Date();
+            const scadenza = new Date(anno, mese - 1);
+            if (mese > 12) {
+                input.value = val.substring(0, 2);
+                mostraToast('Mese non valido');
+            } else if (scadenza < new Date(oggi.getFullYear(), oggi.getMonth())) {
+                input.style.borderColor = '#c0392b';
+                mostraToast('Carta scaduta');
+            } else {
+                input.style.borderColor = '';
+            }
+        }
+    }
+
+    function luhn(numero) {
+        let sum = 0;
+        let alt = false;
+
+        for (let i = numero.length - 1; i >= 0; i--) {
+            let n = parseInt(numero[i]);
+            if (alt) {
+                n *= 2;
+                if (n > 9) n -= 9;
+            }
+            sum += n;
+            alt = !alt;
+        }
+
+        return sum % 10 === 0;
+    }
+
+    function aggiornaPreview() {
+        const numero = document.getElementById('inputCarta').value.replace(/\s/g, '');
+        const intestatario = document.getElementById('inputIntestatario').value;
+        const scadenza = document.getElementById('inputScadenza').value;
+        const ultime4 = numero.length >= 4 ? numero.slice(-4) : '****';
+        document.getElementById('cartaNumeroPreview').textContent = numero.length > 0 ? '**** **** **** ' + ultime4 : '**** **** **** ****';
+        document.getElementById('cartaIntestatarioPreview').textContent = intestatario || 'NOME COGNOME';
+        document.getElementById('cartaScadenzaPreview').textContent = scadenza || 'MM/AA';
+    }
+
+    function pagaOra() {
+        const numero = document.getElementById('inputCarta').value.replace(/\s/g, '');
+        const intestatario = document.getElementById('inputIntestatario').value.trim();
+        const scadenza = document.getElementById('inputScadenza').value.trim();
+        const cvv = document.getElementById('inputCvv').value.trim();
+
+        if (numero.length < 16 || !intestatario || scadenza.length < 5 || cvv.length < 3) {
+            mostraToast('Compila tutti i campi della carta');
+            return;
+        }
+
+        if (!luhn(numero)) {
+            mostraToast('Numero carta non valido');
+            return;
+        }
+
+        const mese = parseInt(scadenza.substring(0, 2));
+        const anno = parseInt('20' + scadenza.substring(3, 5));
+        const oggi = new Date();
+        if (mese > 12 || new Date(anno, mese - 1) < new Date(oggi.getFullYear(), oggi.getMonth())) {
+            mostraToast('Carta scaduta o non valida');
+            return;
+        }
+
+        const ultime4 = numero.startsWith('0000 0000 0000') && _datiDefault?.cartaUltime4
+            ? _datiDefault.cartaUltime4
+            : numero.slice(-4);
+        inviaOrdine(intestatario, ultime4, scadenza, false);
+    }
+
+    function pagaInContanti() {
+        inviaOrdine('', '', '', true);
+    }
+
+    function inviaOrdine(intestatario, ultime4, scadenza, skip) {
+        document.getElementById('orderPagamento').style.display = 'none';
+        document.getElementById('orderSpinner').style.display = 'flex';
+
+        const params = new URLSearchParams({
+            indirizzo: _indirizzo,
+            intestatario: intestatario,
+            ultime4: ultime4,
+            scadenza: scadenza,
+            skip: skip,
+            note: _note
+        });
+
+        fetch('/Home/ConfermaOrdine?' + params.toString(), { method: 'POST' })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('orderSpinner').style.display = 'none';
+                    document.getElementById('orderSuccess').style.display = 'flex';
+                    document.getElementById('cartCountBadge').textContent = '0';
+                    const minuti = data.tempoStimato;
+                    document.getElementById('tempoConsegna').textContent = `⏱ Tempo stimato: ${minuti} minuti`;
+                    setTimeout(() => {
+                        fetch('/Home/CompletaConsegna', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                            body: 'idOrdine=' + data.idOrdine
+                        });
+                    }, minuti * 60 * 1000);
+                } else {
+                    chiudiOrdineModal();
+                    mostraToast('Errore: ' + data.message);
+                }
+            })
+            .catch(() => {
+                chiudiOrdineModal();
+                mostraToast('Errore di connessione');
+            });
+    }
+
+    function chiudiOrdineModal() {
+        document.getElementById('orderOverlay').style.display = 'none';
+        document.getElementById('orderModal').style.display = 'none';
+    }
+
+    const categorie = {
+        ordini: {
+            label: '🛒 Ordini',
+            domande: ['ordinare']
+        },
+        pagamenti: {
+            label: '💳 Pagamenti',
+            domande: ['pagamento', 'pagamento_metodi']
+        },
+        menu: {
+            label: '🍽 Menu e allergeni',
+            domande: ['allergeni']
+        },
+        logistica: {
+            label: '🚴 Consegna e tempi',
+            domande: ['consegna']
+        },
+        info: {
+            label: 'ℹ️ Informazioni generali',
+            domande: ['orari', 'modifica']
+        }
+    };
+
+    const risposte = {
+        orari: {
+            domanda: "🕐 Orari di apertura",
+            risposta: "Siamo aperti tutti i giorni dalle <strong>8:00 alle 19:00</strong>. I rider raggiungeranno la vostra destinazione nel tempo più breve possibile."
+        },
+        ordinare: {
+            domanda: "📱 Come ordinare",
+            risposta: "Aggiungi gli articoli al carrello, accedi al tuo account e clicca su <strong>Ordina ora</strong>. Inserisci il metodo di pagamento e alla fine riceverai una conferma al completamento."
+        },
+        pagamento: {
+            domanda: "💳 Metodi di pagamento",
+            risposta: "Accettiamo <strong>carta di credito/debito</strong>, <strong>PayPal</strong> e <strong>contanti alla consegna</strong>."
+        },
+        allergeni: {
+            domanda: "🌿 Allergeni e ingredienti",
+            risposta: "Clicca sul nome di ogni articolo nel menu per vedere ingredienti e allergeni. In ogni articolo sono <strong>specificati alla voce specifica</strong>."
+        },
+        consegna: {
+            domanda: "🚴 Tempi di consegna",
+            risposta: "Il tempo medio per la consegna a domicilio è stimato attorno ai <strong>10-15 minuti</strong>. In orari di punta potrebbe richiedere qualche minuto in più."
+        },
+        modifica: {
+            domanda: "✏️ Modificare i dati personali",
+            risposta: "Puoi modificare i tuoi dati nella <strong>schermata dedicata in alto a destra</strong>. Basterà cliccare il nome utente e verrà aperta la pagina dedicata."
+        },
+        pagamento_metodi: {
+            domanda: "💶 Pagamento alla consegna",
+            risposta: "Sì, accettiamo <strong>contanti alla consegna</strong>. Ti chiediamo di avere l'importo esatto per facilitare il rider."
+        }
+    };
+
+    function toggleBot() {
+        const panel = document.getElementById('botPanel');
+        const bubble = document.getElementById('botBubble');
+        panel.classList.toggle('open');
+        bubble.classList.toggle('open');
+    }
+
+    function apriCategoria(cat) {
+        const c = categorie[cat];
+        if (!c) return;
+
+        const messages = document.getElementById('botMessages');
+        const suggestions = document.getElementById('botSuggestions');
+
+        // Messaggio utente
+        const userMsg = document.createElement('div');
+        userMsg.className = 'bot-msg user';
+        userMsg.textContent = c.label;
+        messages.insertBefore(userMsg, suggestions);
+
+        // Risposta bot con domande della categoria
+        setTimeout(() => {
+            const botMsg = document.createElement('div');
+            botMsg.className = 'bot-msg bot';
+            botMsg.textContent = 'Su cosa hai bisogno di aiuto?';
+            messages.insertBefore(botMsg, suggestions);
+
+            // Aggiorna suggerimenti con le domande della categoria
+            suggestions.innerHTML = c.domande.map(d =>
+                `<button class="bot-suggestion" onclick="rispondi('${d}')">${risposte[d].domanda}</button>`
+            ).join('');
+
+            messages.appendChild(suggestions);
+            messages.scrollTop = messages.scrollHeight;
+        }, 400);
+
+        messages.scrollTop = messages.scrollHeight;
+    }
+
+    function rispondi(chiave) {
+        const r = risposte[chiave];
+        if (!r) return;
+
+        const messages = document.getElementById('botMessages');
+        const suggestions = document.getElementById('botSuggestions');
+
+        // Messaggio utente
+        const userMsg = document.createElement('div');
+        userMsg.className = 'bot-msg user';
+        userMsg.textContent = r.domanda;
+        messages.insertBefore(userMsg, suggestions);
+
+        // Risposta bot
+        setTimeout(() => {
+            const botMsg = document.createElement('div');
+            botMsg.className = 'bot-msg bot';
+            botMsg.innerHTML = r.risposta;
+            messages.insertBefore(botMsg, suggestions);
+
+            // Mostra solo "Chiedi altro"
+            suggestions.innerHTML = `
+            <button class="bot-suggestion bot-chiedi-altro" onclick="mostraTutte()">
+                💬 Chiedi altro
+            </button>
+        `;
+
+            messages.appendChild(suggestions);
+            messages.scrollTop = messages.scrollHeight;
+        }, 400);
+
+        messages.scrollTop = messages.scrollHeight;
+    }
+
+    function mostraTutte() {
+        const messages = document.getElementById('botMessages');
+        const suggestions = document.getElementById('botSuggestions');
+
+        const botMsg = document.createElement('div');
+        botMsg.className = 'bot-msg bot';
+        botMsg.textContent = 'Certo! Su cosa posso aiutarti?';
+        messages.insertBefore(botMsg, suggestions);
+
+        setTimeout(() => {
+            suggestions.innerHTML = `
+            <button class="bot-suggestion" onclick="apriCategoria('ordini')">🛒 Ordini</button>
+            <button class="bot-suggestion" onclick="apriCategoria('pagamenti')">💳 Pagamenti</button>
+            <button class="bot-suggestion" onclick="apriCategoria('menu')">🍽 Menu e allergeni</button>
+            <button class="bot-suggestion" onclick="apriCategoria('logistica')">🚴 Consegna e tempi</button>
+            <button class="bot-suggestion" onclick="apriCategoria('info')">ℹ️ Informazioni generali</button>
+        `;
+            messages.appendChild(suggestions);
+            messages.scrollTop = messages.scrollHeight;
+        }, 400);
+    }
+
+    function toggleTheme() {
+        const html = document.documentElement;
+        const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        html.setAttribute('data-theme', next);
+        localStorage.setItem('theme', next);
+        document.querySelector('.theme-toggle-icon').textContent = next === 'dark' ? '☀️' : '🌙';
+    }
+    document.addEventListener('DOMContentLoaded', function () {
+        const icon = document.querySelector('.theme-toggle-icon');
+        if (icon) icon.textContent = localStorage.getItem('theme') === 'dark' ? '☀️' : '🌙';
+    });
+
+    function toggleNav() {
+        document.getElementById('navLinks').classList.toggle('open');
+        document.getElementById('navHamburger').classList.toggle('open');
+    }
+
+    function toggleAdminMenu(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const admin = document.getElementById('navAdmin');
+        admin?.classList.toggle('open');
+        const arrow = admin?.querySelector('.nav-admin-arrow');
+        if (arrow) arrow.textContent = admin.classList.contains('open') ? '−' : '▼';
+    }
+
+    function toggleAccountMenu(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const account = document.getElementById('navAccount');
+        account?.classList.toggle('open');
+        const arrow = account?.querySelector('.nav-account-arrow');
+        if (arrow) arrow.textContent = account.classList.contains('open') ? '−' : '▼';
+    }
+
+    document.addEventListener('click', function(e) {
+        const nav = document.getElementById('navLinks');
+        const btn = document.getElementById('navHamburger');
+        if (nav && nav.classList.contains('open') && !nav.contains(e.target) && !btn.contains(e.target)) {
+            nav.classList.remove('open');
+            btn.classList.remove('open');
+        }
+
+        const admin = document.getElementById('navAdmin');
+        if (admin && admin.classList.contains('open') && !admin.contains(e.target)) {
+            admin.classList.remove('open');
+            const arrow = admin.querySelector('.nav-admin-arrow');
+            if (arrow) arrow.textContent = '▼';
+        }
+
+        const account = document.getElementById('navAccount');
+        if (account && account.classList.contains('open') && !account.contains(e.target)) {
+            account.classList.remove('open');
+            const arrow = account.querySelector('.nav-account-arrow');
+            if (arrow) arrow.textContent = '▼';
+        }
+    });
+
+    function resetBot() {
+        const messages = document.getElementById('botMessages');
+        messages.innerHTML = `
+        <div class="bot-msg bot">
+            Ciao! Sono il tuo assistente virtuale del Caffè Ritmo. Seleziona una categoria per iniziare.
+        </div>
+        <div class="bot-suggestions" id="botSuggestions">
+            <button class="bot-suggestion" onclick="apriCategoria('ordini')">🛒 Ordini</button>
+            <button class="bot-suggestion" onclick="apriCategoria('pagamenti')">💳 Pagamenti</button>
+            <button class="bot-suggestion" onclick="apriCategoria('menu')">🍽 Menu e allergeni</button>
+            <button class="bot-suggestion" onclick="apriCategoria('logistica')">🚴 Consegna e tempi</button>
+            <button class="bot-suggestion" onclick="apriCategoria('info')">ℹ️ Informazioni generali</button>
+        </div>
+    `;
+    }
+</script>
+
+</body>
+</html>

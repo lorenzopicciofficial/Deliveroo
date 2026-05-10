@@ -1,0 +1,84 @@
+@model DeliverooApp.Models.Orari
+@{
+    ViewData["Title"] = "Impostazioni Orari";
+    Layout = "_Layout";
+}
+
+<div class="admin-articoli-wrapper">
+
+    <div class="admin-header">
+        <div style="display:flex; align-items:center; gap:1rem;">
+            <h1>Impostazioni Orari</h1>
+            <span class="badge-admin">ADMIN</span>
+        </div>
+    </div>
+
+    @if (ViewBag.Successo != null)
+    {
+        <div class="profilo-successo">✓ @ViewBag.Successo</div>
+    }
+
+    <form method="post" asp-action="Impostazioni">
+        <input type="hidden" name="Id" value="@Model.Id"/>
+
+        <div class="profilo-card">
+            <h2>Orario di apertura</h2>
+            <p class="profilo-sub">Il locale accetta ordini in questo intervallo di orario</p>
+            <div class="admin-form-grid">
+                <div class="form-group">
+                    <label>Apertura</label>
+                    <input type="time" name="OrarioApertura" value="@Model.OrarioApertura.ToString(@"hh\:mm")" required/>
+                </div>
+                <div class="form-group">
+                    <label>Chiusura</label>
+                    <input type="time" name="OrarioChiusura" value="@Model.OrarioChiusura.ToString(@"hh\:mm")" required/>
+                </div>
+            </div>
+        </div>
+
+        <div class="profilo-card">
+            <h2>Giorni di apertura</h2>
+            <p class="profilo-sub">Seleziona i giorni in cui il locale è aperto</p>
+            <div style="display:flex; gap:1rem; flex-wrap:wrap; margin-top:.5rem;">
+                @{
+                    var giorniSelezionati = Model.GiorniAperti.Split(',').Select(int.Parse).ToList();
+                    var nomiGiorni = new[] { "", "Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato", "Domenica" };
+                }
+                @for (int g = 1; g <= 7; g++)
+                {
+                    <label style="display:flex; align-items:center; gap:.4rem; cursor:pointer; font-size:.9rem;">
+                        <input type="checkbox" name="giorniSelezionati" value="@g"
+                               @(giorniSelezionati.Contains(g) ? "checked" : "")/>
+                        @nomiGiorni[g]
+                    </label>
+                }
+            </div>
+            <input type="hidden" name="GiorniAperti" id="giorniApertiHidden" value="@Model.GiorniAperti"/>
+        </div>
+
+        <div class="profilo-card">
+            <h2>Messaggio di chiusura</h2>
+            <p class="profilo-sub">Testo mostrato agli utenti quando il locale è chiuso</p>
+            <div class="form-group">
+                <input type="text" name="MessaggioChiusura" value="@Model.MessaggioChiusura" required/>
+            </div>
+        </div>
+
+        <div class="admin-form-actions">
+            <button type="submit" class="btn-admin-save" style="padding:.8rem 2rem">
+                Salva modifiche
+            </button>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+<script>
+    // Aggiorna il campo hidden con i giorni selezionati prima del submit
+    document.querySelector('form').addEventListener('submit', function() {
+        const checkboxes = document.querySelectorAll('input[name="giorniSelezionati"]:checked');
+        const valori = Array.from(checkboxes).map(cb => cb.value).join(',');
+        document.getElementById('giorniApertiHidden').value = valori || '0';
+    });
+</script>
+}

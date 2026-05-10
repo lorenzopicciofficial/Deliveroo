@@ -1,0 +1,184 @@
+@{
+    ViewData["Title"] = "Statistiche";
+    Layout = "_Layout";
+
+    var incassoPerCat = ViewBag.IncassoPerCategoria as Dictionary<string, double>;
+    var ordiniPerGiorno = ViewBag.OrdiniPerGiorno as Dictionary<string, int>;
+    var ordiniPerStato = ViewBag.OrdiniPerStato as Dictionary<string, int>;
+    var top5 = ViewBag.Top5Articoli as List<DeliverooApp.Models.Articolo>;
+    double incassoTotale = ViewBag.IncassoTotale;
+    var articoloTop = ViewBag.ArticoloPiuOrdinato as DeliverooApp.Models.Articolo;
+}
+
+<div class="insights-wrapper">
+
+    <div class="admin-header">
+        <div style="display:flex; align-items:center; gap:1rem;">
+            <h1>Statistiche</h1>
+            <span class="badge-admin">ADMIN</span>
+        </div>
+    </div>
+
+    <div class="stats-grid" style="margin-bottom:2rem">
+        <div class="stat-card">
+            <p class="stat-label">Incasso totale</p>
+            <p class="stat-value">€ @incassoTotale.ToString("0.00")</p>
+            <p class="stat-sub">da tutti gli ordini</p>
+        </div>
+        @if (articoloTop != null)
+        {
+            <div class="stat-card stat-card-highlight">
+                <p class="stat-label">Articolo più ordinato</p>
+                <p class="stat-value">@articoloTop.Nome</p>
+                <p class="stat-sub">@articoloTop.NumOrdini ordini totali</p>
+            </div>
+        }
+    </div>
+
+    <div class="insights-grid">
+
+        <div class="insights-card full">
+            <h2>Ordini negli ultimi 30 giorni</h2>
+            <canvas id="chartOrdiniGiorno"></canvas>
+        </div>
+
+        <div class="insights-card">
+            <h2>Incasso per categoria</h2>
+            <canvas id="chartCategoria"></canvas>
+        </div>
+
+        <div class="insights-card">
+            <h2>Ordini per stato</h2>
+            <canvas id="chartStato"></canvas>
+        </div>
+
+        <div class="insights-card full">
+            <h2>Top 5 articoli più ordinati</h2>
+            <canvas id="chartTop5"></canvas>
+        </div>
+
+    </div>
+</div>
+
+@section Scripts {
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+<script>
+    Chart.register(ChartDataLabels);
+    const colori = ['#7c3a2d', '#c17f3a', '#d4a574', '#e8c9a0', '#f5ede8'];
+
+    const giorniLabels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(ordiniPerGiorno?.Keys.Reverse().ToList() ?? new List<string>()));
+    const giorniData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(ordiniPerGiorno?.Values.Reverse().ToList() ?? new List<int>()));
+
+    new Chart(document.getElementById('chartOrdiniGiorno'), {
+        type: 'line',
+        data: {
+            labels: giorniLabels,
+            datasets: [{
+                label: 'Ordini',
+                data: giorniData,
+                borderColor: '#7c3a2d',
+                backgroundColor: 'rgba(124,58,45,0.1)',
+                borderWidth: 2,
+                pointBackgroundColor: '#7c3a2d',
+                tension: 0.4,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { display: false },
+                datalabels: { display: false }
+            },
+            scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+        }
+    });
+
+    const catLabels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(incassoPerCat?.Keys.ToList() ?? new List<string>()));
+    const catData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(incassoPerCat?.Values.ToList() ?? new List<double>()));
+
+    new Chart(document.getElementById('chartCategoria'), {
+        type: 'doughnut',
+        data: {
+            labels: catLabels,
+            datasets: [{
+                data: catData,
+                backgroundColor: colori,
+                borderWidth: 2,
+                borderColor: '#fff'
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { position: 'bottom' },
+                datalabels: {
+                    color: '#fff',
+                    font: { weight: 'bold', size: 13 },
+                    formatter: function(value, ctx) {
+                        const tot = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                        return tot > 0 ? ((value / tot) * 100).toFixed(1) + '%' : '';
+                    }
+                }
+            }
+        }
+    });
+
+    const statoLabels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(ordiniPerStato?.Keys.ToList() ?? new List<string>()));
+    const statoData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(ordiniPerStato?.Values.ToList() ?? new List<int>()));
+
+    new Chart(document.getElementById('chartStato'), {
+        type: 'doughnut',
+        data: {
+            labels: statoLabels,
+            datasets: [{
+                data: statoData,
+                backgroundColor: colori,
+                borderWidth: 2,
+                borderColor: '#fff'
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { position: 'bottom' },
+                datalabels: {
+                    color: '#fff',
+                    font: { weight: 'bold', size: 13 },
+                    formatter: function(value, ctx) {
+                        const tot = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                        return tot > 0 ? ((value / tot) * 100).toFixed(1) + '%' : '';
+                    }
+                }
+            }
+        }
+    });
+
+    const top5Labels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(top5?.Select(a => a.Nome).ToList() ?? new List<string>()));
+    const top5Data = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(top5?.Select(a => a.NumOrdini).ToList() ?? new List<int>()));
+
+    new Chart(document.getElementById('chartTop5'), {
+        type: 'bar',
+        data: {
+            labels: top5Labels,
+            datasets: [{
+                label: 'Ordini',
+                data: top5Data,
+                backgroundColor: colori,
+                borderRadius: 8,
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            indexAxis: 'y',
+            plugins: {
+                legend: { display: false },
+                datalabels: { display: false }
+            },
+            scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } } }
+        }
+    });
+</script>
+}

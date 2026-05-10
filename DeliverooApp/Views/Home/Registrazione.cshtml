@@ -1,0 +1,61 @@
+﻿@{
+    ViewData["Title"] = "Registrati";
+    Layout = "_Layout";
+}
+
+<div class="auth-wrapper">
+    <div class="auth-card">
+        <div class="auth-header">
+            <h2>Crea account</h2>
+            <p>Unisciti al Caffè Ritmo</p>
+        </div>
+
+        <form method="post" asp-action="Registrazione" asp-controller="Home">
+            <div class="form-group">
+                <label>Nome</label>
+                <input type="text" name="Nome" placeholder="Il tuo nome" required/>
+            </div>
+            <div class="form-group">
+                <label>Cognome</label>
+                <input type="text" name="Cognome" placeholder="Il tuo cognome" required/>
+            </div>
+            <div class="form-group">
+                <label>Username</label>
+                <input type="text" name="UserName" placeholder="Scegli un username" required/>
+            </div>
+            <div class="form-group">
+                <label>Email</label>
+                <input type="email" name="Email" placeholder="La tua email" required/>
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" name="Password" placeholder="Scegli una password" required/>
+            </div>
+            <div class="form-group">
+                <label>Domanda di sicurezza</label>
+                <select name="DomandaSicurezza" required>
+                    @foreach (var d in DeliverooApp.Controllers.HomeController.DomandeSicurezza)
+                    {
+                        <option value="@d">@d</option>
+                    }
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Risposta segreta</label>
+                <input type="text" name="RispostaSicurezza" placeholder="La tua risposta" required/>
+            </div>
+
+            @if (ViewData["errore"] != null)
+            {
+                <p class="auth-error">@ViewData["errore"]</p>
+            }
+
+            <button type="submit" class="auth-btn">Registrati</button>
+        </form>
+
+        <p class="auth-switch">
+            Hai già un account?
+            <a asp-action="Login" asp-controller="Home">Accedi</a>
+        </p>
+    </div>
+</div>

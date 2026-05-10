@@ -1,0 +1,193 @@
+﻿@model List<DeliverooApp.Models.Ordine>
+@{
+    ViewData["Title"] = "I miei ordini";
+    Layout = "_Layout";
+    double totaleSpeso = ViewBag.TotaleSpeso;
+    string username = ViewBag.Username;
+}
+
+<div class="ordini-wrapper">
+
+    <div class="ordini-header">
+        <div>
+            <p class="hero-eyebrow">Ciao, @username</p>
+            <h1 class="ordini-title">I miei ordini</h1>
+        </div>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <p class="stat-label">Ordini effettuati</p>
+            <p class="stat-value">@Model.Count</p>
+            <p class="stat-sub">dal tuo primo ordine</p>
+        </div>
+
+        <div class="stat-card stat-card-highlight">
+            <p class="stat-label">Totale speso</p>
+            <p class="stat-value">€ @totaleSpeso.ToString("0.00")</p>
+            <p class="stat-sub">in tutti i tuoi ordini</p>
+        </div>
+    </div>
+
+    @if (Model.Count == 0)
+    {
+    <div class="ordini-empty">
+        <p>Non hai ancora effettuato nessun ordine.</p>
+        <a asp-action="Index" asp-controller="Home" class="auth-btn"
+           style="display:inline-block; margin-top:1.5rem; width:auto; padding: 12px 28px;">
+            Vai al menu
+        </a>
+    </div>
+    }
+    else
+    {
+    <!-- FILTRI -->
+    <div class="ordini-filtri">
+        <div class="admin-search-bar" style="flex:2; margin-bottom:0">
+            <input type="text" id="searchMieiOrdini" placeholder="Cerca..." oninput="filtraMieiOrdini()"/>
+        </div>
+        <select id="filtroStatoMiei" class="filtro-select" onchange="filtraMieiOrdini()">
+            <option value="">Tutti gli stati</option>
+            <option value="in attesa">In Attesa</option>
+            <option value="consegnato">Consegnato</option>
+            <option value="eliminato">Eliminato</option>
+        </select>
+        <div style="display:flex; flex-direction:column; gap:2px;">
+            <span style="font-size:.7rem; color:#8a8278; font-weight:600; text-transform:uppercase; letter-spacing:.5px;">Da</span>
+            <input type="date" id="filtroDalMiei" class="filtro-date" onchange="filtraMieiOrdini()" title="Dal"/>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:2px;">
+            <span style="font-size:.7rem; color:#8a8278; font-weight:600; text-transform:uppercase; letter-spacing:.5px;">A</span>
+            <input type="date" id="filtroAlMiei" class="filtro-date" onchange="filtraMieiOrdini()" title="Al"/>
+        </div>
+        <button class="btn-admin-cancel" onclick="resetFiltriMiei()">Reset</button>
+    </div>
+
+    <div class="ordini-table-wrap">
+        <table class="ordini-table">
+            <thead>
+            <tr>
+                <th id="th-id" class="th-sortable" onclick="sortById()"># ↕</th>
+                <th>Data</th>
+                <th>Indirizzo</th>
+                <th>Importo</th>
+                <th>Stato</th>
+                <th></th>
+            </tr>
+            </thead>
+            <tbody>
+            @foreach (var o in Model)
+            {
+            bool hasProgress = o.Stato == "in attesa" && o.DataConferma.HasValue;
+            <tr class="mio-ordine-row"
+                data-id="@o.IdOrdine"
+                data-search="@o.Indirizzo.ToLower()"
+                data-stato="@o.Stato.ToLower()"
+                data-data="@o.Data.ToString("yyyy-MM-dd")">
+                <td class="td-id">#@o.IdOrdine</td>
+                <td class="td-muted">@o.Data.ToString("dd MMM yyyy, HH:mm")</td>
+                <td class="td-muted">@o.Indirizzo</td>
+                <td class="td-price">€ @o.ImportoTotale.ToString("0.00")</td>
+                <td>
+                    <span class="stato-badge stato-@o.Stato.ToLower().Replace(" ", "_")">
+                        @o.Stato
+                    </span>
+                </td>
+                <td>
+                    <a class="btn-dettaglio" asp-action="DettaglioOrdine" asp-route-id="@o.IdOrdine" asp-route-from="miei">
+                        Dettaglio
+                    </a>
+                </td>
+            </tr>
+            @if (hasProgress)
+            {
+            <tr class="delivery-bar-row">
+                <td colspan="6">
+                    <div class="delivery-bar-mini"
+                         data-conferma="@o.DataConferma.Value.ToString("o")"
+                         data-tempo="@o.TempoStimato">
+                        <div class="delivery-bar-mini-fill"></div>
+                        <span class="delivery-bar-mini-label"></span>
+                    </div>
+                </td>
+            </tr>
+            }
+            }
+            </tbody>
+        </table>
+    </div>
+    }
+</div>
+
+@section Scripts {
+<script>
+    function filtraMieiOrdini() {
+        const testo = document.getElementById('searchMieiOrdini').value.toLowerCase().trim();
+        const stato = document.getElementById('filtroStatoMiei').value.toLowerCase();
+        const dal = document.getElementById('filtroDalMiei').value;
+        const al = document.getElementById('filtroAlMiei').value;
+
+        document.querySelectorAll('.mio-ordine-row').forEach(row => {
+            const search = row.dataset.search;
+            const statoRow = row.dataset.stato;
+            const data = row.dataset.data;
+
+            const matchSearch = search.includes(testo);
+            const matchStato = stato === '' || statoRow === stato;
+            const matchDal = dal === '' || data >= dal;
+            const matchAl = al === '' || data <= al;
+
+            const show = matchSearch && matchStato && matchDal && matchAl;
+            row.style.display = show ? '' : 'none';
+
+            const next = row.nextElementSibling;
+            if (next && next.classList.contains('delivery-bar-row'))
+                next.style.display = show ? '' : 'none';
+        });
+    }
+
+    function resetFiltriMiei() {
+        document.getElementById('searchMieiOrdini').value = '';
+        document.getElementById('filtroStatoMiei').value = '';
+        document.getElementById('filtroDalMiei').value = '';
+        document.getElementById('filtroAlMiei').value = '';
+        filtraMieiOrdini();
+    }
+
+    let sortAsc = true;
+    function sortById() {
+        const tbody = document.querySelector('table tbody');
+        const thId = document.getElementById('th-id');
+        const rows = Array.from(tbody.querySelectorAll('tr[data-id]'));
+        const pairs = rows.map(row => ({
+            main: row,
+            bar: row.nextElementSibling?.classList.contains('delivery-bar-row') ? row.nextElementSibling : null
+        }));
+        pairs.sort((a, b) => {
+            const diff = parseInt(a.main.dataset.id) - parseInt(b.main.dataset.id);
+            return sortAsc ? diff : -diff;
+        });
+        pairs.forEach(({ main, bar }) => {
+            tbody.appendChild(main);
+            if (bar) tbody.appendChild(bar);
+        });
+        sortAsc = !sortAsc;
+        thId.textContent = `# ${sortAsc ? '↓' : '↑'}`;
+    }
+
+    function aggiornaMiniBars() {
+        document.querySelectorAll('.delivery-bar-mini').forEach(el => {
+            const conferma = new Date(el.dataset.conferma);
+            const tempo = parseInt(el.dataset.tempo);
+            const elapsed = (new Date() - conferma) / 60000;
+            const pct = Math.min(elapsed / tempo * 100, 100);
+            el.querySelector('.delivery-bar-mini-fill').style.width = pct + '%';
+            const rimanenti = Math.max(Math.ceil(tempo - elapsed), 0);
+            el.querySelector('.delivery-bar-mini-label').textContent =
+                rimanenti > 0 ? `🛵 Consegna stimata tra ${rimanenti} min` : '🛵 In arrivo...';
+        });
+    }
+    aggiornaMiniBars();
+    setInterval(aggiornaMiniBars, 10000);
+</script>
+}

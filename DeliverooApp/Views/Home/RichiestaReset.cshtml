@@ -1,0 +1,31 @@
+@{
+    ViewData["Title"] = "Reset password";
+    Layout = "_Layout";
+}
+
+<div class="auth-wrapper">
+    <div class="auth-card">
+        <div class="auth-header">
+            <h2>Reset password</h2>
+            <p>Inserisci il tuo username per continuare</p>
+        </div>
+
+        <form method="post" asp-action="RichiestaReset" asp-controller="Home">
+            <div class="form-group">
+                <label>Username</label>
+                <input type="text" name="username" placeholder="Il tuo username" required/>
+            </div>
+
+            @if (ViewData["errore"] != null)
+            {
+                <p class="auth-error">@ViewData["errore"]</p>
+            }
+
+            <button type="submit" class="auth-btn">Continua</button>
+        </form>
+
+        <p class="auth-switch">
+            <a asp-action="Login" asp-controller="Home">Torna al login</a>
+        </p>
+    </div>
+</div>

@@ -1,0 +1,43 @@
+﻿@{
+ViewData["Title"] = "Accedi";
+Layout = "_Layout";
+}
+
+<div class="auth-wrapper">
+    <div class="auth-card">
+        <div class="auth-header">
+            <h2>Bentornato</h2>
+            <p>Accedi per ordinare i tuoi prodotti preferiti</p>
+        </div>
+
+        <form method="post" asp-action="Login" asp-controller="Home">
+            <div class="form-group">
+                <label>Username</label>
+                <input type="text" name="UserName" placeholder="Il tuo username" required/>
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" name="Password" placeholder="La tua password" required/>
+            </div>
+
+            @if (ViewData["errore"] != null)
+            {
+            <p class="auth-error">@ViewData["errore"]</p>
+            }
+            @if (TempData["successoReset"] != null)
+            {
+            <p class="auth-success">@TempData["successoReset"]</p>
+            }
+
+            <button type="submit" class="auth-btn">Accedi</button>
+            <p class="auth-forgot">
+                <a asp-action="RichiestaReset" asp-controller="Home">Password dimenticata?</a>
+            </p>
+        </form>
+
+        <p class="auth-switch">
+            Non hai un account?
+            <a asp-action="Registrazione" asp-controller="Home">Registrati</a>
+        </p>
+    </div>
+</div>

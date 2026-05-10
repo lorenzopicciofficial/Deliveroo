@@ -1,0 +1,288 @@
+@model List<DeliverooApp.Models.Articolo>
+@{
+    ViewData["Title"] = "Gestione Articoli";
+    Layout = "_Layout";
+    var categorie = Model.Select(a => a.Categoria).Distinct().OrderBy(c => c).ToList();
+}
+
+<div class="admin-articoli-wrapper">
+
+    <div class="admin-header">
+        <div style="display:flex; align-items:center; gap:1rem;">
+            <h1>Gestione Articoli</h1>
+            <span class="badge-admin">ADMIN</span>
+        </div>
+        <div style="display:flex; gap:.8rem; align-items:center;">
+            <a href="/Home/ExportArticoliCsv" class="btn-export">Esporta CSV</a>
+            <button class="btn-admin-add" onclick="toggleForm()">+ Nuovo articolo</button>
+        </div>
+    </div>
+
+    <!-- FORM AGGIUNTA -->
+    <div class="admin-form-box" id="formAggiunta" style="display:none">
+        <h3>Nuovo articolo</h3>
+        <form method="post" asp-action="AggiungiArticolo" enctype="multipart/form-data">
+            <div class="admin-form-grid">
+                <div class="form-group">
+                    <label>Nome</label>
+                    <input type="text" name="Nome" required/>
+                </div>
+                <div class="form-group">
+                    <label>Categoria</label>
+                    <input type="text" name="Categoria" required/>
+                </div>
+                <div class="form-group">
+                    <label>Prezzo (€)</label>
+                    <input type="number" name="PrezzoListino" step="0.01" min="0" lang="en" required/>
+                </div>
+                <div class="form-group">
+                    <label>Tempo preparazione (min)</label>
+                    <input type="number" name="TempoPreparazione" min="0"/>
+                </div>
+                <div class="form-group">
+                    <label>Immagine</label>
+                    <div class="foto-upload-wrap">
+                        <input type="file" name="fotoFile" id="fotoFileAdd" accept="image/*" style="display:none"
+                               onchange="onFotoChange(this,'anteprimaAdd','fotoNomeAdd')"/>
+                        <div class="foto-upload-box" onclick="document.getElementById('fotoFileAdd').click()">
+                            <span class="foto-nome" id="fotoNomeAdd">Nessun file selezionato</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                                 stroke="#b8936a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"
+                                 width="20" height="20">
+                                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                            </svg>
+                        </div>
+                        <img id="anteprimaAdd" src="" style="display:none; margin-top:6px; max-height:80px; border-radius:6px;"/>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Allergeni</label>
+                    <input type="text" name="Allergeni"/>
+                </div>
+                <div class="form-group full">
+                    <label>Descrizione</label>
+                    <textarea name="Descrizione" rows="2"></textarea>
+                </div>
+                <div class="form-group full">
+                    <label>Ingredienti</label>
+                    <textarea name="Ingredienti" rows="2"></textarea>
+                </div>
+            </div>
+            <div class="admin-form-actions">
+                <button type="submit" class="btn-admin-save">Salva</button>
+                <button type="button" class="btn-admin-cancel" onclick="toggleForm()">Annulla</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- FILTRI -->
+    <div class="ordini-filtri">
+        <div class="admin-search-bar" style="flex:2; margin-bottom:0">
+            <input type="text" id="searchArticoli" placeholder="Cerca per nome articolo..." oninput="filtraArticoli()"/>
+        </div>
+        <select id="filtroCategoria" class="filtro-select" onchange="filtraArticoli()">
+            <option value="">Tutte le categorie</option>
+            @foreach (var cat in categorie)
+            {
+                <option value="@cat.ToLower()">@cat</option>
+            }
+        </select>
+        <button class="btn-admin-cancel" onclick="resetFiltriArticoli()">Reset</button>
+    </div>
+
+    <!-- TABELLA -->
+    <div class="admin-table-wrap">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Foto</th>
+                    <th>Nome</th>
+                    <th>Categoria</th>
+                    <th>Prezzo</th>
+                    <th>Ordini</th>
+                    <th>Disponibile</th>
+                    <th>Azioni</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var a in Model)
+                {
+                    <tr id="row-@a.Id" class="articolo-row"
+                        data-nome="@a.Nome.ToLower()"
+                        data-categoria="@a.Categoria.ToLower()">
+                        <td>
+                            @if (!string.IsNullOrEmpty(a.FotoUrl))
+                            {
+                                <img src="@a.FotoUrl" class="admin-thumb"/>
+                            }
+                        </td>
+                        <td>@a.Nome</td>
+                        <td>@a.Categoria</td>
+                        <td>€ @a.PrezzoListino.ToString("0.00")</td>
+                        <td>@a.NumOrdini</td>
+                        <td>
+                            <label class="toggle-switch">
+                                <input type="checkbox" @(a.Disponibile ? "checked" : "")
+                                       onchange="aggiornaDisponibilita(@a.Id, this.checked)"/>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </td>
+                        <td class="admin-actions">
+                            <button class="btn-admin-edit"
+                                    onclick="apriModifica(@a.Id, '@a.Nome', '@a.Categoria',
+                                    @a.PrezzoListino.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
+                                    @a.TempoPreparazione, '@a.FotoUrl',
+                                    '@a.Allergeni', '@Html.Raw(a.Descrizione?.Replace("'","\\'")??"")','@Html.Raw(a.Ingredienti?.Replace("'","\\'")??"")','@a.NumOrdini')">
+                                Modifica
+                            </button>
+                            <form method="post" asp-action="EliminaArticolo" style="display:inline"
+                                  onsubmit="return confirm('Eliminare @a.Nome?')">
+                                <input type="hidden" name="id" value="@a.Id"/>
+                                <button type="submit" class="btn-admin-delete">Elimina</button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <!-- MODAL MODIFICA -->
+    <div class="admin-overlay" id="adminOverlay" onclick="chiudiModifica()"></div>
+    <div class="admin-modal" id="adminModal">
+        <h3>Modifica articolo</h3>
+        <form method="post" asp-action="ModificaArticolo" enctype="multipart/form-data">
+            <input type="hidden" name="Id" id="editId"/>
+            <input type="hidden" name="NumOrdini" id="editNumOrdini"/>
+            <input type="hidden" name="FotoUrl" id="editFoto"/>
+            <div class="admin-form-grid">
+                <div class="form-group">
+                    <label>Nome</label>
+                    <input type="text" name="Nome" id="editNome" required/>
+                </div>
+                <div class="form-group">
+                    <label>Categoria</label>
+                    <input type="text" name="Categoria" id="editCategoria" required/>
+                </div>
+                <div class="form-group">
+                    <label>Prezzo (€)</label>
+                    <input type="number" name="PrezzoListino" id="editPrezzo" step="0.01" min="0" lang="en" required/>
+                </div>
+                <div class="form-group">
+                    <label>Tempo preparazione (min)</label>
+                    <input type="number" name="TempoPreparazione" id="editTempo" min="0"/>
+                </div>
+                <div class="form-group">
+                    <label>Immagine</label>
+                    <div class="foto-upload-wrap">
+                        <input type="file" name="fotoFile" id="fotoFileEdit" accept="image/*" style="display:none"
+                               onchange="onFotoChange(this,'anteprimaEdit','fotoNomeEdit')"/>
+                        <div class="foto-upload-box" onclick="document.getElementById('fotoFileEdit').click()">
+                            <span class="foto-nome" id="fotoNomeEdit">Nessun file selezionato</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                                 stroke="#b8936a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"
+                                 width="20" height="20">
+                                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                            </svg>
+                        </div>
+                        <img id="anteprimaEdit" src="" style="display:none; margin-top:6px; max-height:80px; border-radius:6px;"/>
+                        <img id="fotoAttualeEdit" src="" style="margin-top:6px; max-height:80px; border-radius:6px;"/>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Allergeni</label>
+                    <input type="text" name="Allergeni" id="editAllergeni"/>
+                </div>
+                <div class="form-group full">
+                    <label>Descrizione</label>
+                    <textarea name="Descrizione" id="editDescrizione" rows="2"></textarea>
+                </div>
+                <div class="form-group full">
+                    <label>Ingredienti</label>
+                    <textarea name="Ingredienti" id="editIngredienti" rows="2"></textarea>
+                </div>
+            </div>
+            <div class="admin-form-actions">
+                <button type="submit" class="btn-admin-save">Salva modifiche</button>
+                <button type="button" class="btn-admin-cancel" onclick="chiudiModifica()">Annulla</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    function aggiornaDisponibilita(id, disponibile) {
+        fetch('/Home/AggiornaDisponibilita', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `id=${id}&disponibile=${disponibile}`
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success)
+                mostraToast(disponibile ? 'Articolo disponibile' : 'Articolo non disponibile');
+            else
+                mostraToast('Errore aggiornamento');
+        })
+        .catch(() => mostraToast('Errore di connessione'));
+    }
+
+    function filtraArticoli() {
+        const testo = document.getElementById('searchArticoli').value.toLowerCase().trim();
+        const cat = document.getElementById('filtroCategoria').value.toLowerCase();
+        document.querySelectorAll('.articolo-row').forEach(row => {
+            const nome = row.dataset.nome;
+            const categoria = row.dataset.categoria;
+            const matchNome = nome.includes(testo);
+            const matchCat = cat === '' || categoria === cat;
+            row.style.display = matchNome && matchCat ? '' : 'none';
+        });
+    }
+
+    function resetFiltriArticoli() {
+        document.getElementById('searchArticoli').value = '';
+        document.getElementById('filtroCategoria').value = '';
+        filtraArticoli();
+    }
+
+    function toggleForm() {
+        const f = document.getElementById('formAggiunta');
+        f.style.display = f.style.display === 'none' ? 'block' : 'none';
+    }
+
+    function onFotoChange(input, idImg, idNome) {
+        if (!input.files || !input.files[0]) return;
+        const nomeEl = document.getElementById(idNome);
+        nomeEl.textContent = input.files[0].name;
+        nomeEl.style.color = '#1c1a18';
+        const img = document.getElementById(idImg);
+        img.src = URL.createObjectURL(input.files[0]);
+        img.style.display = 'block';
+    }
+
+    function apriModifica(id, nome, cat, prezzo, tempo, foto, allergeni, desc, ingr, numOrdini) {
+        document.getElementById('editId').value = id;
+        document.getElementById('editNome').value = nome;
+        document.getElementById('editCategoria').value = cat;
+        document.getElementById('editPrezzo').value = prezzo;
+        document.getElementById('editTempo').value = tempo;
+        document.getElementById('editFoto').value = foto;
+        document.getElementById('editAllergeni').value = allergeni;
+        document.getElementById('editDescrizione').value = desc;
+        document.getElementById('editIngredienti').value = ingr;
+        document.getElementById('editNumOrdini').value = numOrdini;
+        const fotoAttuale = document.getElementById('fotoAttualeEdit');
+        if (foto) { fotoAttuale.src = foto; fotoAttuale.style.display = 'block'; }
+        else { fotoAttuale.style.display = 'none'; }
+        document.getElementById('anteprimaEdit').style.display = 'none';
+        document.getElementById('adminOverlay').style.display = 'block';
+        document.getElementById('adminModal').style.display = 'block';
+    }
+
+    function chiudiModifica() {
+        document.getElementById('adminOverlay').style.display = 'none';
+        document.getElementById('adminModal').style.display = 'none';
+    }
+</script>
+}

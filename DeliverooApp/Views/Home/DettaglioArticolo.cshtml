@@ -1,0 +1,247 @@
+﻿@model DeliverooApp.Models.Articolo
+@{
+    ViewData["Title"] = Model.Nome;
+    Layout = "_Layout";
+    double mediaVoti = ViewBag.MediaVoti ?? 0.0;
+    bool haOrdinato = ViewBag.HaOrdinato ?? false;
+    int? votoUtente = ViewBag.VotoUtente;
+    bool isLoggato = ViewBag.IsLoggato ?? false;
+    bool isPreferito = ViewBag.Preferito ?? false;
+}
+
+<div class="dettaglio-wrapper">
+
+    <a asp-action="Index" class="dettaglio-back">← Torna al menu</a>
+
+    <div class="dettaglio-grid">
+
+        <div class="dettaglio-img-wrap">
+            @if (!string.IsNullOrEmpty(Model.FotoUrl))
+            {
+                <img src="@Model.FotoUrl" alt="@Model.Nome"/>
+            }
+            else
+            {
+                <div class="dettaglio-img-placeholder">~</div>
+            }
+            <span class="dettaglio-cat-badge">@Model.Categoria</span>
+            @if (isLoggato)
+            {
+                <button class="btn-preferito btn-preferito-dettaglio @(isPreferito ? "attivo" : "")"
+                        onclick="togglePreferito(event, @Model.Id, this)"
+                        title="@(isPreferito ? "Rimuovi dai preferiti" : "Aggiungi ai preferiti")">
+                    ♥
+                </button>
+            }
+        </div>
+
+        <div class="dettaglio-info">
+
+            <h1 class="dettaglio-title">@Model.Nome</h1>
+
+            <div class="dettaglio-meta">
+                <div class="meta-item">
+                    <span class="meta-icon">⏱</span>
+                    <div>
+                        <p class="meta-label">Tempo preparazione</p>
+                        <p class="meta-value">@Model.TempoPreparazione min</p>
+                    </div>
+                </div>
+                <div class="meta-item">
+                    <span class="meta-icon">☆</span>
+                    <div>
+                        <p class="meta-label">Ordini totali</p>
+                        <p class="meta-value">@Model.NumOrdini</p>
+                    </div>
+                </div>
+                @if (mediaVoti > 0)
+                {
+                    <div class="meta-item">
+                        <span class="meta-icon">★</span>
+                        <div>
+                            <p class="meta-label">Valutazione</p>
+                            <p class="meta-value" id="mediaVotiDisplay">@mediaVoti.ToString("0.0") / 5</p>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            @if (!string.IsNullOrEmpty(Model.Descrizione))
+            {
+                <div class="dettaglio-section">
+                    <h3>Descrizione</h3>
+                    <p>@Model.Descrizione</p>
+                </div>
+            }
+
+            @if (!string.IsNullOrEmpty(Model.Ingredienti))
+            {
+                <div class="dettaglio-section">
+                    <h3>Ingredienti</h3>
+                    <p>@Model.Ingredienti</p>
+                </div>
+            }
+
+            @if (!string.IsNullOrEmpty(Model.Allergeni))
+            {
+                <div class="dettaglio-section">
+                    <h3>Allergeni</h3>
+                    <p class="allergeni-text">@Model.Allergeni</p>
+                </div>
+            }
+
+            <!-- RECENSIONE -->
+            @if (haOrdinato)
+            {
+                <div class="dettaglio-section">
+                    <h3>La tua valutazione</h3>
+                    <div class="stelle-wrapper" id="stelleWrapper">
+                        @for (int i = 1; i <= 5; i++)
+                        {
+                            <button class="stella @(votoUtente.HasValue && i <= votoUtente.Value ? "stella-piena" : "")"
+                                    onclick="valuta(@Model.Id, @i)"
+                                    onmouseover="anteprima(@i)"
+                                    onmouseout="ripristinaStelle()">
+                                ★
+                            </button>
+                        }
+                    </div>
+                    @if (votoUtente.HasValue)
+                    {
+                        <p class="stelle-sub" id="stelleSub">Hai valutato @votoUtente.Value su 5 — clicca per modificare</p>
+                    }
+                    else
+                    {
+                        <p class="stelle-sub" id="stelleSub">Clicca per valutare</p>
+                    }
+                </div>
+            }
+
+            @{
+                var sconto = ViewBag.ScontoAttivo as DeliverooApp.Models.Sconto;
+                double prezzoFinale = sconto != null
+                    ? Model.PrezzoListino * (1 - sconto.Percentuale / 100.0)
+                    : Model.PrezzoListino;
+            }
+
+            <div class="dettaglio-footer">
+                @if (sconto != null)
+                {
+                    <div class="dettaglio-price-wrap">
+                        <span class="dettaglio-price dettaglio-price-scontato">€ @prezzoFinale.ToString("0.00")</span>
+                        <span class="dettaglio-price-originale">€ @Model.PrezzoListino.ToString("0.00")</span>
+                        <span class="sconto-badge">-@sconto.Percentuale%</span>
+                    </div>
+                }
+                else
+                {
+                    <span class="dettaglio-price">€ @Model.PrezzoListino.ToString("0.00")</span>
+                }
+                <button class="btn-add-dettaglio" onclick="aggiungiDaDettaglio(@Model.Id)">
+                    + Aggiungi al carrello
+                </button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+@if (ViewBag.Correlati != null && ((List<DeliverooApp.Models.Articolo>)ViewBag.Correlati).Count > 0)
+{
+    var correlati = (List<DeliverooApp.Models.Articolo>)ViewBag.Correlati;
+    <section class="correlati-section">
+        <h2 class="correlati-title">Spesso gustati assieme</h2>
+        <div class="correlati-grid">
+            @foreach (var c in correlati)
+            {
+                <div class="product-card">
+                    <a href="/Home/DettaglioArticolo/@c.Id" class="product-img-wrap">
+                        @if (!string.IsNullOrEmpty(c.FotoUrl))
+                        {
+                            <img src="@c.FotoUrl" alt="@c.Nome"/>
+                        }
+                        else
+                        {
+                            <div class="product-img-placeholder">~</div>
+                        }
+                    </a>
+                    <div class="product-info">
+                        <span class="product-cat-badge">@c.Categoria</span>
+                        <a href="/Home/DettaglioArticolo/@c.Id" class="product-name">@c.Nome</a>
+                        <div class="product-footer">
+                            <span class="product-price">€ @c.PrezzoListino.ToString("0.00")</span>
+                            <button class="btn-add" onclick="aggiungiDaDettaglio(@c.Id)">+ Aggiungi</button>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </section>
+}
+
+@section Scripts {
+<script>
+    let _votoCorrente = @(votoUtente.HasValue ? votoUtente.Value.ToString() : "0");
+
+    function anteprima(n) {
+        document.querySelectorAll('.stella').forEach((s, i) => {
+            s.classList.toggle('stella-piena', i < n);
+        });
+    }
+
+    function ripristinaStelle() {
+        document.querySelectorAll('.stella').forEach((s, i) => {
+            s.classList.toggle('stella-piena', i < _votoCorrente);
+        });
+    }
+
+    function valuta(idArticolo, voto) {
+        fetch('/Home/SalvaRecensione', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `idArticolo=${idArticolo}&voto=${voto}`
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                _votoCorrente = voto;
+                ripristinaStelle();
+                document.getElementById('stelleSub').textContent =
+                    `Hai valutato ${voto} su 5 — clicca per modificare`;
+                const mediaEl = document.getElementById('mediaVotiDisplay');
+                if (mediaEl) mediaEl.textContent = data.nuovaMedia + ' / 5';
+                mostraToast('Valutazione salvata!');
+            } else {
+                mostraToast(data.message);
+            }
+        })
+        .catch(() => mostraToast('Errore di connessione'));
+    }
+
+    function aggiungiDaDettaglio(id) {
+        fetch('/Home/MettiNelCarrello/' + id)
+            .then(() => {
+                fetch('/Home/CarrelloJson')
+                    .then(r => r.json())
+                    .then(data => {
+                        document.getElementById('cartCountBadge').textContent = data.numeroArticoli;
+                        mostraToast('Articolo aggiunto al carrello');
+                    });
+            });
+    }
+
+    function togglePreferito(e, id, btn) {
+        e.preventDefault();
+        e.stopPropagation();
+        fetch('/Home/TogglePreferito?idArticolo=' + id, { method: 'POST' })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    btn.classList.toggle('attivo', data.preferito);
+                    btn.title = data.preferito ? 'Rimuovi dai preferiti' : 'Aggiungi ai preferiti';
+                    mostraToast(data.preferito ? 'Aggiunto ai preferiti' : 'Rimosso dai preferiti');
+                }
+            });
+    }
+</script>
+}
