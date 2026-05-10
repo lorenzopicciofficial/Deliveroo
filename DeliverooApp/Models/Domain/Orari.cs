@@ -7,6 +7,7 @@ public class Orari
     public TimeSpan OrarioChiusura { get; set; }
     public string GiorniAperti { get; set; }
     public string MessaggioChiusura { get; set; }
+    public bool RegistrazioneBloccata { get; set; }
 
     public bool IsAperto
     {

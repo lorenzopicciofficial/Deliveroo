@@ -54,6 +54,7 @@ var connStr = app.Configuration.GetConnectionString("Default")!;
 using (var gd = new GestioneDati(connStr))
 {
     gd.MigraColonnaNote();
+    gd.MigraColonnaRegistrazioneBloccata();
     gd.MigraUtentiSenzaRisposta(
         "Qual è il nome del tuo primo animale domestico?",
         BCrypt.Net.BCrypt.HashPassword("paparino")

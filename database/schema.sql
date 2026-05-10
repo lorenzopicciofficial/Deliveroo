@@ -119,11 +119,12 @@ CREATE TABLE IF NOT EXISTS recensione (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS impostazioni (
-    id                  INT AUTO_INCREMENT PRIMARY KEY,
-    orarioApertura      TIME         NOT NULL DEFAULT '07:00:00',
-    orarioChiusura      TIME         NOT NULL DEFAULT '22:00:00',
-    giorniAperti        VARCHAR(200) NOT NULL DEFAULT 'Lunedì,Martedì,Mercoledì,Giovedì,Venerdì,Sabato,Domenica',
-    messaggioChiusura   VARCHAR(500) NOT NULL DEFAULT 'Siamo momentaneamente chiusi.'
+    id                      INT AUTO_INCREMENT PRIMARY KEY,
+    orarioApertura          TIME         NOT NULL DEFAULT '07:00:00',
+    orarioChiusura          TIME         NOT NULL DEFAULT '22:00:00',
+    giorniAperti            VARCHAR(200) NOT NULL DEFAULT 'Lunedì,Martedì,Mercoledì,Giovedì,Venerdì,Sabato,Domenica',
+    messaggioChiusura       VARCHAR(500) NOT NULL DEFAULT 'Siamo momentaneamente chiusi.',
+    registrazioneBloccata   TINYINT(1)   NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 INSERT IGNORE INTO impostazioni (id, orarioApertura, orarioChiusura, giorniAperti, messaggioChiusura)

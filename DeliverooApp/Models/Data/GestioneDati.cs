@@ -1113,6 +1113,30 @@ public void EliminaSconto(int id)
     cmd.ExecuteNonQuery();
 }
 
+public void MigraColonnaRegistrazioneBloccata()
+{
+    string query = @"ALTER TABLE impostazioni
+                     ADD COLUMN IF NOT EXISTS registrazioneBloccata TINYINT(1) NOT NULL DEFAULT 0";
+    MySqlCommand cmd = new MySqlCommand(query, con);
+    cmd.ExecuteNonQuery();
+}
+
+public bool RecuperaRegistrazioneBloccata()
+{
+    string query = "SELECT registrazioneBloccata FROM impostazioni LIMIT 1";
+    MySqlCommand cmd = new MySqlCommand(query, con);
+    object result = cmd.ExecuteScalar();
+    return result != null && Convert.ToBoolean(result);
+}
+
+public void ImpostaRegistrazioneBloccata(bool bloccata)
+{
+    string query = "UPDATE impostazioni SET registrazioneBloccata = @v WHERE id = 1";
+    MySqlCommand cmd = new MySqlCommand(query, con);
+    cmd.Parameters.AddWithValue("@v", bloccata ? 1 : 0);
+    cmd.ExecuteNonQuery();
+}
+
 public Orari RecuperaOrari()
 {
     string query = "SELECT * FROM impostazioni LIMIT 1";
@@ -1127,7 +1151,8 @@ public Orari RecuperaOrari()
             OrarioApertura = (TimeSpan)reader["orarioApertura"],
             OrarioChiusura = (TimeSpan)reader["orarioChiusura"],
             GiorniAperti = (string)reader["giorniAperti"],
-            MessaggioChiusura = (string)reader["messaggioChiusura"]
+            MessaggioChiusura = (string)reader["messaggioChiusura"],
+            RegistrazioneBloccata = Convert.ToBoolean(reader["registrazioneBloccata"])
         };
     }
     reader.Close();

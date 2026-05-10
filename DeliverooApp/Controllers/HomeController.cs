@@ -77,8 +77,10 @@ public class HomeController : Controller
     {
         if (_contextAccessor.HttpContext.Session.GetString("user") != null)
             return RedirectToAction("Index");
+        if (gestioneDati.RecuperaRegistrazioneBloccata())
+            return RedirectToAction("Index");
         return View();
-    }  
+    }
     
     public static readonly string[] DomandeSicurezza = {
         "Come si chiamava il tuo primo animale?",
@@ -91,6 +93,8 @@ public class HomeController : Controller
     [HttpPost]
     public IActionResult Registrazione(Utente utente)
     {
+        if (gestioneDati.RecuperaRegistrazioneBloccata())
+            return RedirectToAction("Index");
         Utente esistente = gestioneDati.RecuperaUtenteConNome(utente.UserName);
         if (esistente != null)
         {
@@ -900,6 +904,25 @@ public IActionResult EliminaSconto(int id)
         gestioneDati.AggiornaOrari(orari);
         ViewBag.Successo = "Orari aggiornati con successo!";
         return View("Orari", orari);
+    }
+
+    //------SECURITY-------
+    public IActionResult Security()
+    {
+        if (_contextAccessor.HttpContext.Session.GetString("ruolo") != "admin")
+            return RedirectToAction("Index");
+        ViewBag.RegistrazioneBloccata = gestioneDati.RecuperaRegistrazioneBloccata();
+        return View();
+    }
+
+    [HttpPost]
+    public IActionResult ToggleQuarantena()
+    {
+        if (_contextAccessor.HttpContext.Session.GetString("ruolo") != "admin")
+            return RedirectToAction("Index");
+        bool attuale = gestioneDati.RecuperaRegistrazioneBloccata();
+        gestioneDati.ImpostaRegistrazioneBloccata(!attuale);
+        return RedirectToAction("Security");
     }
 
     protected override void Dispose(bool disposing)
