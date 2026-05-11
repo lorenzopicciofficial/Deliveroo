@@ -41,7 +41,7 @@
     @if (Model.Stato == "in attesa" && Model.DataConferma.HasValue)
     {
     <div class="delivery-bar-section"
-         data-conferma="@Model.DataConferma.Value.ToString("o")"
+         data-conferma="@DateTime.SpecifyKind(Model.DataConferma.Value, DateTimeKind.Utc).ToString("o")"
          data-tempo="@Model.TempoStimato"
          id="deliverySection">
         <div class="delivery-bar-header">

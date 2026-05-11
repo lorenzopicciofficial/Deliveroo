@@ -468,13 +468,13 @@ public IActionResult ConfermaOrdine(string indirizzo = "", string intestatario =
     Ordine ordine = new Ordine
     {
         IdUtente = idUtente,
-        Data = DateTime.Now,
+        Data = DateTime.UtcNow,
         NomeCliente = _contextAccessor.HttpContext.Session.GetString("nomeCompleto")
                       ?? _contextAccessor.HttpContext.Session.GetString("user"),
         Indirizzo = indirizzo,
         ImportoTotale = totale,
         Stato = "in attesa",
-        DataConferma = DateTime.Now,
+        DataConferma = DateTime.UtcNow,
         TempoStimato = RandomNumberGenerator.GetInt32(5,31),
         Note = string.IsNullOrWhiteSpace(note) ? null : note.Trim()
     };
